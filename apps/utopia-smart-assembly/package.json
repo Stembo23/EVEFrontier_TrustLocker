@@ -1,0 +1,53 @@
+{
+  "name": "trust-locker-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview --host 0.0.0.0 --port 4179",
+    "vercel-build": "pnpm build",
+    "deploy:vercel:preview": "pnpm dlx vercel@latest deploy --prebuilt",
+    "deploy:vercel:prod": "pnpm dlx vercel@latest deploy --prebuilt --prod",
+    "print:locker-context": "node --import tsx scripts/print-locker-context.ts",
+    "demo:script": "node --import tsx scripts/demo-scenarios.ts",
+    "locker:publish": "node --import tsx scripts/trust-locker/publish.ts",
+    "locker:read-deployment": "node --import tsx scripts/trust-locker/read-deployment.ts",
+    "locker:authorize": "node --import tsx scripts/trust-locker/authorize.ts",
+    "locker:configure": "node --import tsx scripts/trust-locker/configure.ts",
+    "locker:set-strike-network": "node --import tsx scripts/trust-locker/set-strike-network-policy.ts",
+    "locker:seed-open": "node --import tsx scripts/trust-locker/seed-open-inventory.ts",
+    "locker:seed-visitor": "node --import tsx scripts/trust-locker/seed-visitor-inventory.ts",
+    "locker:set-visitor-rival": "node --import tsx scripts/trust-locker/set-visitor-tribe.ts",
+    "locker:inspect": "node --import tsx scripts/trust-locker/inspect-locker.ts",
+    "locker:signals": "node --import tsx scripts/trust-locker/recent-signals.ts",
+    "locker:trade-fair": "node --import tsx scripts/trust-locker/trade-fair.ts",
+    "locker:trade-dishonest": "node --import tsx scripts/trust-locker/trade-dishonest.ts",
+    "demo:reset": "node --import tsx scripts/trust-locker/demo-operator.ts reset",
+    "demo:prepare": "node --import tsx scripts/trust-locker/demo-operator.ts prepare",
+    "demo:verify": "node --import tsx scripts/trust-locker/demo-operator.ts verify",
+    "demo:all": "node --import tsx scripts/trust-locker/demo-operator.ts all"
+  },
+  "dependencies": {
+    "@evefrontier/dapp-kit": "^0.1.2",
+    "@mysten/dapp-kit-core": "^1.0.4",
+    "@mysten/dapp-kit-react": "^1.0.2",
+    "@mysten/sui": "^2.4.0",
+    "@radix-ui/colors": "^3.0.0",
+    "@radix-ui/themes": "^3.2.1",
+    "@tanstack/react-query": "^5.80.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@types/react": "^19.2.4",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react-swc": "^3.10.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "packageManager": "pnpm@10.17.0"
+}

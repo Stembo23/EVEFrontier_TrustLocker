@@ -1,0 +1,12 @@
+[package]
+name = "trust_locker_extension"
+edition = "2024"
+
+[dependencies]
+world = { local = "../../../../vendor/world-contracts/contracts/world" }
+
+[environments]
+localnet = "065d4667"
+testnet_internal = "4c78adac"
+testnet_utopia = "4c78adac"
+testnet_stillness = "4c78adac"

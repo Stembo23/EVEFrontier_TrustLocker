@@ -1,0 +1,11 @@
+.toolchains/
+*.dmg
+*.pkg
+*.tar.gz
+*.tar.xz
+.DS_Store
+**/node_modules/
+**/dist/
+**/.vite/
+**/build/
+**/.vercel/

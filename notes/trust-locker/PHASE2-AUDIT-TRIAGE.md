@@ -1,0 +1,33 @@
+# Trust Locker Phase 2 Audit Triage
+
+Date: 2026-03-18
+
+This is the short version for orchestration.
+
+## Highest Priority
+
+- **Medium:** Complete owned-Utopia hosted cutover. The code is ready ahead of the real in-game deployment proof.
+- **Medium:** Resolve or explicitly accept the external prover-stage failure in the auditor pipeline.
+
+## Next Priority
+
+- **Medium:** Capture a polished multi-locker shared-network demo in the browser if we want stronger presentation proof beyond tests.
+- **Low:** Continue the in-game visual polish pass.
+
+## Lower Priority
+
+- **Low:** Keep the local demo signer locked to localnet/full-detail workflows only.
+
+## Audit State
+
+- `sui move test`: passed, 13/13.
+- `pnpm build`: passed.
+- External auditor Move scan: 0 findings, but the prover stage failed and the run is not a final signoff.
+- External auditor offchain scan: not available from the current CLI because it expects a `Move.toml`.
+- Utopia read-only context: validated separately, but it is not a Trust Locker deployment proof.
+
+## Orchestrator Actions
+
+1. Do not treat Phase 2 as deployment-complete until a real owned Utopia unit opens the hosted app through `F`.
+2. Do not treat Phase 2 as audit-complete until the prover failure is resolved or explicitly accepted.
+3. Keep the shared strike design fixed at owner-defined strike networks, not world-global reputation.

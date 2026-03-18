@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "network": "localnet",
+  "tenant": "dev",
+  "rpcUrl": "http://127.0.0.1:9000",
+  "world": {
+    "packageId": "0x0e69cde16ee0140d86c8fffe01d5fa339362fa96267914ab5732e219a8abbdeb",
+    "objectRegistry": "0xdaac692c4a867cdacad43d5fdac186889d1a63e1435d855b19ab0448a66d6479"
+  },
+  "trustLocker": {
+    "packageId": "0x87a20c88b36264ff257f7fa7f14fb342decfcc7691c823c3233bec49a7f63728",
+    "extensionConfigId": "0xce21ae0e55ed57f745c7935b20789c737423244a820fa60bb8fcf889f35aea82",
+    "adminCapId": "0x0c9ac391c615dc4c06409965ccc8cca84ead261748960945cfa130c8c5572283",
+    "publishDigest": "2TskapRpseau4egWXYwAzLjA5icPrVYnGcNzzFgjppy4"
+  },
+  "defaults": {
+    "storageUnitItemId": 888800006,
+    "ownerCharacterItemId": 811880,
+    "visitorCharacterItemId": 900000001,
+    "requestedTypeId": 446,
+    "offeredTypeId": 446,
+    "requestedQuantity": 1,
+    "fairOfferedQuantity": 1,
+    "dishonestOfferedQuantity": 0,
+    "friendlyTribes": [
+      100
+    ],
+    "rivalTribes": [
+      200
+    ],
+    "friendlyMultiplierBps": 9000,
+    "rivalMultiplierBps": 15000,
+    "cooldownMs": 60000,
+    "isActive": true
+  },
+  "paths": {
+    "deploymentFile": "/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/deployments/localnet/trust-locker.json",
+    "publishOutputFile": "/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/deployments/localnet/trust-locker-publish.json",
+    "worldSourceFile": "/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/deployments/localnet/extracted-object-ids.json"
+  },
+  "updatedAt": "2026-03-17T16:59:21.694Z"
+}

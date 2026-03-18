@@ -1,0 +1,13 @@
+{
+  "network": "localnet",
+  "world": {
+    "packageId": "0x0e69cde16ee0140d86c8fffe01d5fa339362fa96267914ab5732e219a8abbdeb",
+    "governorCap": "0xdccb8dda6005523f37d8f920fe1d883602b077e8315bd9fcbdde82196d3ee98a",
+    "serverAddressRegistry": "0x6d35c02e5759dae03e9d1d5393b66bba1d88834ec96c9145da2a826b9beaf5c5",
+    "adminAcl": "0x7e6495c0bfac8021f8ddc6f12f9fea8f9f1ae35d9bc92908939d6ebfd2b59101",
+    "objectRegistry": "0xdaac692c4a867cdacad43d5fdac186889d1a63e1435d855b19ab0448a66d6479",
+    "energyConfig": "0xb825e8797c61acaa5e12af7cde966d4ecb830750a75d45fcb7c6e4b8bdbeeaf6",
+    "fuelConfig": "0x0d3af6384a0034f668d6c4152c4e750d6dc84e1d6dbb93576102c80a471751f0",
+    "gateConfig": "0xab846ad3ea5dadfbad623fc322f071bf5dd3bbdb0a3080831bc5cbee1855bce0"
+  }
+}
