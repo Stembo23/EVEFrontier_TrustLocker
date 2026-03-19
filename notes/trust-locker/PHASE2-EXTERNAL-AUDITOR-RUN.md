@@ -52,6 +52,12 @@ That means:
 - the current CLI is not the right tool to directly scan the browser-app `src` tree,
 - and the audit gate should remain open until the prover issue is resolved or explicitly accepted.
 
+Open audit-gate items to carry forward:
+- owned-Utopia cutover is still not proven
+- hosted/public hardening is still a release gate, not a final signoff
+- external prover failure remains unresolved
+- offchain/browser review still relies on internal review and manual evidence until the auditor pipeline supports it
+
 ## Recommended Next Run
 
 1. Re-run the Move-package scan after the prover failure is understood.

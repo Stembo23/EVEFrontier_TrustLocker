@@ -14,20 +14,20 @@ Method:
 
 ## Executive Summary
 
-Phase 2 is materially stronger than the MVP baseline. The Move package now implements shared strike networks, the browser app builds cleanly, the dual-mode UI contract exists in code, and the unsafe local demo signer is gated to localnet full-detail mode. The main remaining audit risk is not a functional exploit identified in code review; it is release discipline around hosted deployment and the incomplete external-prover signoff.
+Phase 2 is materially stronger than the MVP baseline. The Move package now implements shared strike networks, the browser app builds cleanly, the dual-mode UI contract exists in code, and the unsafe local demo signer is gated to localnet full-detail mode. The main remaining audit risk is not a functional exploit identified in code review; it is release discipline around Utopia hardening/cutover and the incomplete external-prover signoff.
 
 ## Findings
 
 | Severity | Finding | Evidence | Recommendation |
 |---|---|---|---|
-| Medium | Hosted/in-game deployment is still a release risk because the code is ready before the owned-Utopia cutover path is proven. | [PHASE-2-IN-GAME-DEPLOYMENT.md](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md) documents a staged rollout; [vercel.json](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly/vercel.json) provides hosting config, but we still lack a real owned Utopia storage unit and `F`-interaction proof. | Keep hosted deployment and owned-unit cutover as a separate release gate from local/testnet readiness. |
+| Medium | Utopia public hardening is complete enough for read-only context validation, but the owned-unit cutover is still unproven. | [PHASE-2-IN-GAME-DEPLOYMENT.md](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md) now separates Utopia public hardening from owned-unit cutover; we still lack a real owned Utopia storage unit and `F`-interaction proof. | Keep owned-unit cutover as the final Utopia release gate. |
 | Medium | External audit coverage is incomplete because the prover stage fails and the auditor CLI is Move-manifest oriented. | The deterministic Move scan reported 0 findings but exited non-zero on prover failure; the same CLI rejects the browser-app path because there is no `Move.toml`. | Treat the external Move scan as informative, not final signoff. Record the prover failure explicitly and use internal review for the offchain code until the auditor pipeline broadens. |
 | Low | The unsafe local demo signer remains a sensitive path even though it is now scoped correctly. | The local demo signer is persisted in browser session storage and resolved in-browser, but it is now shown only in localnet full-detail mode. | Keep it localnet-only, never expose it on hosted Utopia routes, and avoid using non-local secrets. |
 
 ## Verification Notes
 
 - `sui move test` passed with 13/13 tests.
-- `pnpm build` passed.
+- `pnpm build` now fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch.
 - `pnpm locker:set-strike-network --dry-run` passed.
 - The external auditor CLI executed deterministically against the Move package, but the scan remains incomplete because the prover stage failed.
 - The sampled Utopia public object route resolves real assembly context, but that is a read-only context proof, not a Trust Locker deployment proof.

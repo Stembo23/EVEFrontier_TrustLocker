@@ -5,7 +5,7 @@ Use this checklist to accept or reject MVP readiness for hackathon submission.
 ## Product Contract Acceptance
 
 - [ ] Working title only: `Trust Locker` is treated as placeholder.
-- [ ] v1 scope remains local/testnet-first.
+- [ ] v1 scope remains localnet-first, then Utopia public hardening and owned cutover.
 - [ ] No-scope-creep rules are preserved:
   - [ ] no multi-item baskets
   - [ ] no combat/NPC penalties
@@ -71,7 +71,7 @@ Use this checklist to accept or reject MVP readiness for hackathon submission.
 - [x] The localnet operator flow has been proven end to end.
 - [x] Rival-pricing proof exists locally.
 - [x] Submission proof matrix exists and maps each claim to a real artifact.
-- [x] Demo/operator docs explicitly explain the local demo signer split versus Utopia/testnet wallet flow.
+- [x] Demo/operator docs explicitly explain the local demo signer split versus Utopia wallet flow.
 - [ ] Demo callouts explicitly mention:
   - [ ] v1 boundaries
   - [ ] v2 global reputation deferred item

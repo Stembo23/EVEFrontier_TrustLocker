@@ -129,8 +129,8 @@ The frontend is a static SPA and can be hosted on any HTTPS static host that sup
 
 Supported deployment approaches:
 
-- GitHub + Cloudflare Pages
-- Vercel
+- GitHub + Cloudflare Pages as the primary path
+- Vercel as a secondary fallback
 
 Hosted URL contract:
 
@@ -140,6 +140,8 @@ Hosted URL contract:
   - `https://<host>/?tenant=utopia&itemId=<item_id>&view=in-game`
 
 `tenant` and `itemId` provide world context. `view` controls presentation only.
+
+Cloudflare Pages is the primary host. Vercel stays available as a fallback.
 
 ## Roadmap
 

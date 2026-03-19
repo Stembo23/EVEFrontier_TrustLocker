@@ -5,24 +5,27 @@
 - Working title remains `Trust Locker`; final naming is still open.
 - World-global player trade reputation remains deferred to v2.
 - The localnet execution path is now working end to end for the core MVP loop.
+- Utopia is now treated as the public testnet target, not as a separate post-localnet stage.
 - The browser dApp now has real owner policy update/freeze actions and visitor trade execution wired through both:
   - the normal wallet transaction layer
   - a gated unsafe local-only demo signer path for localnet proof
-- `pnpm build` is green at head.
+- `pnpm build` currently fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch; the hosting docs are valid, but the UI/source lane needs to repair the build before release.
 - Browser cooldown blocking is now verified through explicit UI lock state and countdown behavior, not just transaction history.
 - Phase 2 is now active:
-  - hosted in-game deployment
+  - Utopia public hardening
+  - owned Utopia cutover
+  - in-game integration milestone
   - dual-mode UI
   - shared strike persistence
   - dual audit gate
 - The hosted URL contract is documented and aligned to the current hosted-SPA setup:
   - `?view=full` for judge/debug mode
   - `?tenant=utopia&itemId=...&view=in-game` for the in-game browser contract
-- The hosting lane now has explicit static-SPA deployment helpers:
-  - `vercel.json` rewrites to `index.html`
-  - `pnpm deploy:vercel:preview`
-  - `pnpm deploy:vercel:prod`
-  - Vercel is optional, not required
+- The hosting lane is now Cloudflare-first:
+  - GitHub + Cloudflare Pages is the primary static-SPA path
+  - `apps/utopia-smart-assembly/public/_redirects` provides SPA fallback
+  - `pnpm deploy:cloudflare:preview` and `pnpm deploy:cloudflare:prod` exist for the primary host
+  - Vercel remains optional, not required
 
 ## Implemented
 
@@ -47,15 +50,18 @@
   - loads owned objects from a connected wallet
   - queries public Utopia storage units, gates, and network nodes directly
   - surfaces candidate `item_id` values plus ready-made Utopia URLs
-- Phase 2 in-game deployment checklist and hosted URL contract are documented in:
+- Phase 2 Utopia migration and in-game deployment checklist are documented in:
   - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md`
+- Cloudflare Pages deployment scripts now exist in:
+  - `pnpm deploy:cloudflare:preview`
+  - `pnpm deploy:cloudflare:prod`
 - New visitor funding script:
   - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/scripts/trust-locker/seed-visitor-inventory.ts`
 
 ## Verified
 
 - `sui move test` passes with 13 tests.
-- `pnpm build` passes for the browser dApp.
+- `pnpm build` was previously green, but the current tree now fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch and needs a source-lane fix before release signoff.
 - `pnpm locker:set-strike-network --dry-run` works.
 - `resolveLocalnetLockerSnapshot()` now resolves real localnet policy, inventory, and recent signal data without falling back to demo values.
 - `pnpm demo:reset` works.
@@ -86,6 +92,7 @@
 - External auditor deterministic Move scan completes with `0` findings, but the gate remains open because:
   - the prover stage fails in the auditor pipeline
   - the auditor CLI is Move-package oriented and does not scan the browser app directly
+  - offchain/browser review still depends on internal audit plus manual review artifacts
 
 ## Important Fixes Landed
 
@@ -118,7 +125,10 @@
   - external deterministic Move scan is documented
   - prover-stage failure is still open
   - offchain external scan is not available from the current auditor CLI because it expects a Move manifest
+- Utopia migration still has one remaining live ownership milestone:
+  - point a real owned Utopia storage unit at the hosted Trust Locker app and validate `F` opening the in-game browser
 - Owned Utopia storage-unit cutover is still pending user-side control/permissions.
+- Final in-game visual polish is still open and should stay treated as WIP until the next asset pass.
 
 ## Deferred v2
 

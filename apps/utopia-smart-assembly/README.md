@@ -20,29 +20,30 @@ This workspace contains the project-owned code for the Trust Locker Smart Assemb
   - standalone judging/debugging
   - in-game assembly interaction
 - Keep the hosted URL contract explicit:
-  - `https://<your-vercel-project>.vercel.app/?view=full`
-  - `https://<your-vercel-project>.vercel.app/?tenant=utopia&itemId=<item_id>&view=in-game`
+  - `https://<your-pages-project>.pages.dev/?view=full`
+  - `https://<your-pages-project>.pages.dev/?tenant=utopia&itemId=<item_id>&view=in-game`
   - `view` controls presentation only; `tenant` and `itemId` provide world context
 - Preserve honest staged rollout:
-  - local/testnet first
-  - controlled in-game browser validation
+  - localnet first
+  - Utopia public hardening
   - owned Utopia cutover last
 - Use [`notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md) as the source of truth for the in-game hosting and cutover checklist.
-- Keep the package compatible with Sui testnet and EVE Vault-style browser flows
+- Keep the package compatible with Utopia and EVE Vault-style browser flows
 - Treat owned Utopia in-game deployment as a late-stage milestone, not an assumption
 - For localnet browser proof, use the built-in unsafe local-only demo signer instead of chasing wallet-extension custom-RPC support
-- For Utopia/testnet browser proof, use a real wallet connection such as EVE Vault
+- For Utopia browser proof, use a real wallet connection such as EVE Vault
 - Run a dual audit gate before calling Phase 2 complete
 - Treat the final in-game UI as a work in progress, not a finished visual pass
 
 ## Hosting and Deployment
 
-The hosted app is a static Vite SPA. Vercel is supported and already scaffolded, but it is not required. A GitHub + Cloudflare Pages/Workers path is also valid as long as the host serves the same SPA and preserves the query-string contract.
+The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary deployment path. Vercel remains available as a secondary fallback.
 
 ### Runtime assumptions
 
 - The deployed app is a single-page application, not a server-rendered site.
 - The host must rewrite all paths back to `index.html`, so `tenant`, `itemId`, and `view` remain runtime query parameters.
+- Cloudflare Pages must ship the SPA fallback from `public/_redirects`.
 - No deployment-time secrets are required for the hosted frontend path today.
 - `view` changes presentation only:
   - `view=full` keeps the judging and proof surfaces visible
@@ -61,8 +62,8 @@ The hosted app is a static Vite SPA. Vercel is supported and already scaffolded,
 
 1. Install dependencies and verify the build locally.
 2. Choose a static-SPA host:
-   - Vercel using the provided helper scripts
-   - or GitHub + Cloudflare Pages/Workers
+   - GitHub + Cloudflare Pages as the primary path
+   - Vercel only as a secondary fallback
 3. Publish a preview or staging build.
 4. Validate the hosted URL in a normal browser.
 5. Verify both `view=full` and `view=in-game` on the hosted URL.
@@ -71,9 +72,11 @@ The hosted app is a static Vite SPA. Vercel is supported and already scaffolded,
 ### Script contract
 
 - `pnpm build` compiles the app and is the source of truth for hosted output.
+- `pnpm deploy:cloudflare:preview` builds and deploys a preview to Cloudflare Pages.
+- `pnpm deploy:cloudflare:prod` builds and deploys production to Cloudflare Pages.
 - `pnpm vercel-build` mirrors `pnpm build` for Vercel’s build hook.
-- `pnpm deploy:vercel:preview` is optional and performs a prebuilt preview deploy through the Vercel CLI.
-- `pnpm deploy:vercel:prod` is optional and performs a prebuilt production deploy through the Vercel CLI.
+- `pnpm deploy:vercel:preview` remains optional and performs a prebuilt preview deploy through the Vercel CLI.
+- `pnpm deploy:vercel:prod` remains optional and performs a prebuilt production deploy through the Vercel CLI.
 
 ## Product Snapshot
 
@@ -95,6 +98,7 @@ Trust Locker turns a Storage Unit into a programmable social market:
   - `In-Game` mode for player-facing assembly interaction
 - the final in-game UI polish is still in progress
 - the same hosted app will serve standalone browser and in-game browser contexts via the shared `tenant` + `itemId` + `view` URL contract
+- Cloudflare Pages is the primary hosted path, with Vercel kept as a fallback
 
 ## Deferred v2
 

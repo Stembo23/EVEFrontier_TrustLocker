@@ -1,12 +1,21 @@
 import { createDemoSnapshot } from "./demoData";
 import { resolveLocalnetLockerSnapshot } from "./liveLocalnet";
-import type { LockerDataEnvelope, LockerDataSource, LockerSnapshot } from "./models";
+import type {
+  LockerDataEnvelope,
+  LockerDataSource,
+  LockerSnapshot,
+  RuntimeEnvironment,
+  UiCapabilities,
+  UiMode,
+} from "./models";
 
 type ProviderInput = {
   assemblyId?: string;
   assemblyName?: string;
   smartObjectError?: string | null;
   walletAddress?: string | null;
+  tenant?: string | null;
+  viewMode: UiMode;
 };
 
 function applyAssemblyContext(
@@ -30,11 +39,42 @@ function makeEnvelope(
   return { snapshot, source, notes };
 }
 
+function resolveRuntimeEnvironment(args: {
+  tenant?: string | null;
+  viewMode: UiMode;
+  runtimeNetwork?: "localnet";
+}): RuntimeEnvironment {
+  if (args.runtimeNetwork === "localnet") return "localnet";
+  if (args.tenant === "utopia") {
+    return args.viewMode === "in-game" ? "utopia-in-game" : "utopia-browser";
+  }
+  return args.viewMode === "in-game" ? "utopia-in-game" : "utopia-browser";
+}
+
+function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode: UiMode): UiCapabilities {
+  const isFull = viewMode === "full";
+  const isLocalnet = runtimeEnvironment === "localnet";
+
+  return {
+    showDemoSigner: isFull && isLocalnet,
+    showDiscovery: isFull,
+    showSignals: isFull,
+    showSupportCopy: isFull,
+    showAdvancedOwnerControls: isFull,
+    showLocalnetProofNotes: isFull && isLocalnet,
+    showActionStatusPanel: isFull,
+  };
+}
+
 export async function resolveLockerData(input: ProviderInput): Promise<LockerDataEnvelope> {
   let snapshot = createDemoSnapshot();
   const notes: string[] = [];
   let source: LockerDataSource = "demo";
   let runtime: LockerDataEnvelope["runtime"];
+  let runtimeEnvironment = resolveRuntimeEnvironment({
+    tenant: input.tenant,
+    viewMode: input.viewMode,
+  });
 
   if (input.assemblyId || input.assemblyName) {
     snapshot = applyAssemblyContext(snapshot, input.assemblyId, input.assemblyName);
@@ -53,6 +93,11 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
       source = localnet.source;
       notes.push(...localnet.notes);
       runtime = localnet.runtime;
+      runtimeEnvironment = resolveRuntimeEnvironment({
+        tenant: input.tenant,
+        viewMode: input.viewMode,
+        runtimeNetwork: localnet.runtime?.network,
+      });
     } catch (error) {
       notes.push(
         `Localnet read integration not available; demo fallback remains active. ${
@@ -73,5 +118,7 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
     source,
     notes,
     runtime,
+    runtimeEnvironment,
+    capabilities: resolveUiCapabilities(runtimeEnvironment, input.viewMode),
   };
 }

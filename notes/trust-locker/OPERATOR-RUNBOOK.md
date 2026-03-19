@@ -15,10 +15,11 @@ This is the authoritative local/demo sequence for Trust Locker. Use it as the so
   - paste owner key into the `Owner signer secret` field
   - paste visitor key into the `Visitor signer secret` field
   - save them to browser session storage
-- Do not use EVE Vault for the localnet proof. Reserve EVE Vault for Utopia/testnet validation.
-- The hosted deployment path is static and Vercel-based:
-  - `pnpm deploy:vercel:preview` for preview hosting
-  - `pnpm deploy:vercel:prod` for production hosting
+- Do not use EVE Vault for the localnet proof. Reserve EVE Vault for Utopia validation.
+- The hosted deployment path is static and Cloudflare Pages-based:
+  - `pnpm deploy:cloudflare:preview` for preview hosting
+  - `pnpm deploy:cloudflare:prod` for production hosting
+- Vercel remains optional, not primary.
 - No deployment-time secrets are required for the hosted frontend path today.
 
 ## Reset / Prepare / Verify
@@ -112,8 +113,8 @@ Use this only when you are ready to point a real storage unit at the hosted app.
 From [`apps/utopia-smart-assembly`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly):
 
 1. `pnpm build`
-2. `pnpm deploy:vercel:preview`
+2. `pnpm deploy:cloudflare:preview`
 3. Validate the preview URL in a normal browser.
-4. `pnpm deploy:vercel:prod`
+4. `pnpm deploy:cloudflare:prod`
 
-If you need the manual Vercel CLI flow, follow [`PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md).
+If you need the optional Vercel fallback flow, follow [`PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md).

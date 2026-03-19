@@ -1,6 +1,6 @@
 # Trust Locker MVP Demo Checklist
 
-This checklist is for the local/testnet-first MVP demo run.
+This checklist is for the localnet-first demo run before Utopia public hardening and owned cutover.
 
 ## Phase 2 Extension Gates
 

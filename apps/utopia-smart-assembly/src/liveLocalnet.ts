@@ -182,6 +182,7 @@ function findCatalogItem(typeId: number, pointsOverride?: number): CatalogItem {
       label: `type_id ${typeId}`,
       tier: "basic",
       points: pointsOverride ?? 1,
+      volumeM3: 1,
       note: "No curated label for this item yet.",
     };
   }

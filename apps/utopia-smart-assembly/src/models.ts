@@ -1,6 +1,7 @@
 import type { CatalogItem, LockerPolicyDraft } from "../trust-locker.config";
 
 export type UiMode = "full" | "in-game";
+export type RuntimeEnvironment = "localnet" | "utopia-browser" | "utopia-in-game";
 
 export type RelationshipBucket = "friendly" | "neutral" | "rival";
 export type LockerTrustStatus = "mutable" | "frozen";
@@ -32,12 +33,12 @@ export type SharedPenaltyState = {
 
 export type UiCapabilities = {
   showDemoSigner: boolean;
-  showObjectDiscovery: boolean;
-  showDebugPanels: boolean;
+  showDiscovery: boolean;
+  showSignals: boolean;
   showSupportCopy: boolean;
   showAdvancedOwnerControls: boolean;
-  showRecentSignals: boolean;
   showLocalnetProofNotes: boolean;
+  showActionStatusPanel: boolean;
 };
 
 export type OwnerState = {
@@ -111,4 +112,6 @@ export type LockerDataEnvelope = {
   source: LockerDataSource;
   notes: string[];
   runtime?: LockerRuntimeContext;
+  runtimeEnvironment?: RuntimeEnvironment;
+  capabilities?: UiCapabilities;
 };

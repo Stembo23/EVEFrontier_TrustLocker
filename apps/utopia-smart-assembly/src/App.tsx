@@ -26,11 +26,13 @@ import {
   type WalletTxExecutor,
 } from "./liveLocalnet";
 import { resolveLockerData } from "./lockerDataProvider";
-import type { LockerDataEnvelope, UiMode } from "./models";
+import type { LockerDataEnvelope, RuntimeEnvironment, UiCapabilities, UiMode } from "./models";
 import { quoteTradePreview } from "./trustMath";
 
 const LOCAL_DEMO_SIGNER_STORAGE_KEY = "trust-locker.local-demo-signer.v1";
 const VIEW_MODE_STORAGE_KEY = "trust-locker.view-mode.v1";
+const DEFAULT_TENANT = "utopia";
+const ASSEMBLY_TYPE_LABEL = "Smart Storage Unit";
 
 type LocalDemoSignerDraft = {
   ownerSecretKey: string;
@@ -170,6 +172,23 @@ function formatCooldownCountdown(
 
   const seconds = Math.ceil(delta / 1000);
   return `${seconds}s remaining`;
+}
+
+function readTenantFromLocation(): string {
+  if (typeof window === "undefined") return DEFAULT_TENANT;
+  return new URLSearchParams(window.location.search).get("tenant") ?? DEFAULT_TENANT;
+}
+
+function formatVolume(volumeM3: number, quantity = 1): string {
+  const total = volumeM3 * quantity;
+  if (total >= 10) return `${total.toFixed(0)} m3`;
+  if (total >= 1) return `${total.toFixed(1)} m3`;
+  return `${total.toFixed(2)} m3`;
+}
+
+function compactAddress(value: string, short = false): string {
+  if (!value) return "n/a";
+  return short ? abbreviateAddress(value) : value;
 }
 
 function normalizeViewMode(value: string | null | undefined): UiMode | null {
@@ -363,6 +382,7 @@ function App() {
   );
   const preferredReaderAddress =
     account?.address ?? ownerLocalSigner.address ?? visitorLocalSigner.address ?? null;
+  const tenant = readTenantFromLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -373,6 +393,8 @@ function App() {
         assemblyName: assembly?.name,
         smartObjectError: error ? String(error) : null,
         walletAddress: preferredReaderAddress,
+        tenant,
+        viewMode,
       });
       if (!cancelled) {
         setLockerData(envelope);
@@ -383,19 +405,34 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [assembly?.id, assembly?.name, error, preferredReaderAddress, refreshTick]);
+  }, [assembly?.id, assembly?.name, error, preferredReaderAddress, refreshTick, tenant, viewMode]);
 
   const snapshot = lockerData?.snapshot;
   const runtime = lockerData?.runtime;
+  const runtimeEnvironment: RuntimeEnvironment = lockerData?.runtimeEnvironment ?? "utopia-browser";
+  const uiCapabilities: UiCapabilities = lockerData?.capabilities ?? {
+    showDemoSigner: false,
+    showDiscovery: false,
+    showSignals: false,
+    showSupportCopy: false,
+    showAdvancedOwnerControls: false,
+    showLocalnetProofNotes: false,
+    showActionStatusPanel: false,
+  };
   const currentNetwork = String(
     ((currentClient as { network?: string } | null)?.network ?? "unknown"),
   );
   const isInGameMode = viewMode === "in-game";
   const showFullDetail = viewMode === "full";
-  const localDemoSignerAllowed = runtime?.network === "localnet";
-  const showLocalDemoSignerPanel = showFullDetail && localDemoSignerAllowed;
+  const localDemoSignerAllowed = uiCapabilities.showDemoSigner;
+  const showLocalDemoSignerPanel = uiCapabilities.showDemoSigner;
+  const showDiscoveryPanel = uiCapabilities.showDiscovery;
+  const showSignalsPanel = uiCapabilities.showSignals;
+  const showSupportCopy = uiCapabilities.showSupportCopy;
+  const showAdvancedOwnerControls = uiCapabilities.showAdvancedOwnerControls;
   const ownerActor = resolveActorExecution("owner");
   const visitorActor = resolveActorExecution("visitor");
+  const showOwnerPanel = showFullDetail || Boolean(ownerActor);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -810,6 +847,23 @@ function App() {
     snapshot.sharedPenalty.penalties.networkCooldownEndTimestampMs &&
       snapshot.sharedPenalty.penalties.networkCooldownEndTimestampMs > nowMs,
   );
+  const displayedAssemblyName = assembly?.name || snapshot.lockerName;
+  const displayedAssemblyId = assembly?.id || snapshot.lockerId;
+  const ownerLabel = snapshot.owner.label;
+  const runtimeLabel =
+    runtimeEnvironment === "localnet"
+      ? "Localnet"
+      : runtimeEnvironment === "utopia-in-game"
+        ? "Utopia in-game"
+        : "Utopia browser";
+  const operatorStateLabel = snapshot.policy.isActive ? "Online" : "Offline";
+  const compactTradeCopy = preview?.willStrike
+    ? "Underpaying will add a strike and lock this locker temporarily."
+    : "Published terms are satisfied for this exchange.";
+  const networkPenaltyCopy =
+    snapshot.sharedPenalty.pricingPenaltyBps > 0
+      ? `Network penalty active: +${(snapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(0)}%`
+      : "No network penalty";
   const tradeBlockedReason = displayedCooldownActive
     ? `Trading locked while cooldown is active. ${displayedCooldownEndLabel}.`
     : displayedSharedLockoutActive
@@ -822,17 +876,18 @@ function App() {
           ? "Configure the local visitor demo signer or connect a visitor-capable wallet."
           : null;
   const tradeButtonLabel = displayedCooldownActive ? "Cooldown active" : "Execute trade";
+  const showCompactActionStatus = isInGameMode && actionState.status !== "idle";
 
   return (
     <main className={`app-shell ${isInGameMode ? "mode-in-game" : "mode-full"}`}>
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">{PRODUCT_WORKING_NAME} {isInGameMode ? "in-game mode" : "full-detail mode"}</p>
-          <h1>{isInGameMode ? "Assembly market interface" : "Assembly context first. Market rules second."}</h1>
+          <p className="eyebrow">{PRODUCT_WORKING_NAME} | {isInGameMode ? "in-game" : "full detail"}</p>
+          <h1>{isInGameMode ? displayedAssemblyName : "Assembly context first. Trade terms second."}</h1>
           <p className="hero-text">
             {isInGameMode
-              ? "Player-facing assembly view: trust state, inventory, pricing, and trade action."
-              : "This external dApp follows the EVE Frontier assembly flow: identify the assembly, inspect its rules, then act as the owner or as a visitor with full visibility into the consequences."}
+              ? "Inspect the unit, review the published terms, then trade against the locker shelf."
+              : "Operator view for hosted Utopia validation, proof capture, and owner/visitor transaction checks."}
           </p>
         </div>
         <div className="hero-actions">
@@ -852,43 +907,61 @@ function App() {
       </section>
 
       <section className="layout-grid">
-        <article className="card status-card">
+        <article className="card status-card assembly-card">
           <p className="section-label">Assembly Context</p>
-          <h2>{assembly?.name || snapshot.lockerName}</h2>
-          <p className={snapshot.trustStatus === "frozen" ? "trust-pill frozen" : "trust-pill mutable"}>
-            {trustLabel}
-          </p>
-          <p className="trust-copy">{trustDetail}</p>
+          <div className="assembly-hero">
+            <div className="assembly-visual" aria-hidden="true">
+              <span className="assembly-core" />
+              <span className="assembly-fin assembly-fin-a" />
+              <span className="assembly-fin assembly-fin-b" />
+              <span className="assembly-fin assembly-fin-c" />
+            </div>
+            <div className="assembly-meta">
+              <h2>{displayedAssemblyName}</h2>
+              <div className="assembly-badges">
+                <span className={snapshot.trustStatus === "frozen" ? "trust-pill frozen" : "trust-pill mutable"}>
+                  {trustLabel}
+                </span>
+                <span className="runtime-pill">{runtimeLabel}</span>
+                <span className={`runtime-pill ${snapshot.policy.isActive ? "online" : "offline"}`}>
+                  {operatorStateLabel}
+                </span>
+              </div>
+              <p className="trust-copy">{isInGameMode ? compactTradeCopy : trustDetail}</p>
+            </div>
+          </div>
           <dl className="fact-grid">
             <div>
-              <dt>Assembly ID</dt>
-              <dd>{assembly?.id || snapshot.lockerId}</dd>
+              <dt>Assembly type</dt>
+              <dd>{ASSEMBLY_TYPE_LABEL}</dd>
             </div>
             <div>
               <dt>Owner</dt>
-              <dd>{snapshot.owner.label}</dd>
+              <dd>{ownerLabel}</dd>
+            </div>
+            <div>
+              <dt>Assembly ID</dt>
+              <dd>{compactAddress(displayedAssemblyId, isInGameMode)}</dd>
             </div>
             <div>
               <dt>Wallet</dt>
-              <dd>{account?.address ?? "Not connected"}</dd>
+              <dd>{account?.address ? compactAddress(account.address, isInGameMode) : "Not connected"}</dd>
+            </div>
+            <div>
+              <dt>Tenant</dt>
+              <dd>{runtime?.tenant ?? tenant}</dd>
             </div>
             <div>
               <dt>Wallet network</dt>
               <dd>{currentNetwork}</dd>
             </div>
-            <div>
-              <dt>Tenant</dt>
-              <dd>{runtime?.tenant ?? "demo"}</dd>
-            </div>
-            <div>
-              <dt>Data source</dt>
-              <dd>{lockerData?.source}</dd>
-            </div>
           </dl>
-          <div className="connection-note">
-            {loading && <span>Reading selected smart object...</span>}
-            {!loading && lockerData?.notes.map((note) => <span key={note}>{note}</span>)}
-          </div>
+          {showSupportCopy ? (
+            <div className="connection-note">
+              {loading && <span>Reading selected smart object...</span>}
+              {!loading && lockerData?.notes.map((note) => <span key={note}>{note}</span>)}
+            </div>
+          ) : null}
         </article>
 
         {showLocalDemoSignerPanel ? (
@@ -977,7 +1050,7 @@ function App() {
         </article>
         ) : null}
 
-        {showFullDetail ? (
+        {showDiscoveryPanel ? (
         <article className="card discovery-card">
           <p className="section-label">Utopia Object Discovery</p>
           <div className="owner-callout">
@@ -1069,31 +1142,37 @@ function App() {
             </div>
           </div>
           <ul className="policy-list">
-            <li>Friendly multiplier: {snapshot.policy.friendlyMultiplierBps / 100}%</li>
-            <li>Neutral multiplier: 100%</li>
-            <li>Rival multiplier: {snapshot.policy.rivalMultiplierBps / 100}%</li>
-            <li>Friendly tribes: {snapshot.policy.friendlyTribes.join(", ") || "none"}</li>
-            <li>Rival tribes: {snapshot.policy.rivalTribes.join(", ") || "none"}</li>
+            <li>Friendly: {snapshot.policy.friendlyMultiplierBps / 100}%</li>
+            <li>Neutral: 100%</li>
+            <li>Rival: {snapshot.policy.rivalMultiplierBps / 100}%</li>
             <li>Shared penalties: {snapshot.policy.useSharedPenalties ? "enabled" : "disabled"}</li>
+            {showFullDetail ? (
+              <>
+                <li>Friendly tribes: {snapshot.policy.friendlyTribes.join(", ") || "none"}</li>
+                <li>Rival tribes: {snapshot.policy.rivalTribes.join(", ") || "none"}</li>
+              </>
+            ) : null}
           </ul>
         </article>
 
         <article className="card inventory-card">
-          <p className="section-label">Open Inventory</p>
+          <p className="section-label">{isInGameMode ? "Locker Shelf" : "Open Inventory"}</p>
           <div className="item-table">
             {snapshot.openInventory.length === 0 ? (
               <p className="empty-state">No open inventory entries are available right now.</p>
             ) : (
               snapshot.openInventory.map((item) => (
                 <div key={item.typeId} className="item-row">
-                  <div>
+                  <div className="item-main">
+                    <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
                     <strong>{item.label}</strong>
-                    <p>{item.note}</p>
+                    {showFullDetail ? <p>{item.note}</p> : null}
                   </div>
                   <div className="item-meta">
                     <span>type_id {item.typeId}</span>
                     <span>{item.quantity} open</span>
                     <span>{item.points} pts</span>
+                    <span>{formatVolume(item.volumeM3, item.quantity)}</span>
                   </div>
                 </div>
               ))
@@ -1102,21 +1181,23 @@ function App() {
         </article>
 
         <article className="card inventory-card">
-          <p className="section-label">Visitor Owned Inventory</p>
+          <p className="section-label">{isInGameMode ? "Visitor Hold" : "Visitor Owned Inventory"}</p>
           <div className="item-table">
             {snapshot.visitorInventory.length === 0 ? (
               <p className="empty-state">No visitor-owned inventory entries are available right now.</p>
             ) : (
               snapshot.visitorInventory.map((item) => (
                 <div key={item.typeId} className="item-row">
-                  <div>
+                  <div className="item-main">
+                    <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
                     <strong>{item.label}</strong>
-                    <p>{item.note}</p>
+                    {showFullDetail ? <p>{item.note}</p> : null}
                   </div>
                   <div className="item-meta">
                     <span>type_id {item.typeId}</span>
                     <span>{item.quantity} owned</span>
                     <span>{item.points} pts</span>
+                    <span>{formatVolume(item.volumeM3, item.quantity)}</span>
                   </div>
                 </div>
               ))
@@ -1156,6 +1237,7 @@ function App() {
               <strong>{displayedSharedLockoutLabel}</strong>
             </div>
           </div>
+          {isInGameMode ? <p className="trade-copy">{networkPenaltyCopy}</p> : null}
           <div className="trade-grid">
             <label>
               Request item
@@ -1216,7 +1298,9 @@ function App() {
               {preview.willStrike ? "Underpaying: strike + cooldown" : "Fair trade"}
             </p>
             <p className="preview-detail">
-              This preview uses the published locker policy, the detected relationship bucket, and any shared strike-network surcharge currently attached to this visitor.
+              {isInGameMode
+                ? compactTradeCopy
+                : "This preview uses the published locker policy, the detected relationship bucket, and any shared strike-network surcharge currently attached to this visitor."}
             </p>
             <div className="preview-metrics">
               <div>
@@ -1230,6 +1314,14 @@ function App() {
               <div>
                 <span>Offered points</span>
                 <strong>{preview.offeredPoints}</strong>
+              </div>
+              <div>
+                <span>Request volume</span>
+                <strong>{formatVolume(preview.requestedItem.volumeM3, preview.requestedQuantity)}</strong>
+              </div>
+              <div>
+                <span>Offer volume</span>
+                <strong>{formatVolume(preview.offeredItem.volumeM3, preview.offeredQuantity)}</strong>
               </div>
               <div>
                 <span>Deficit</span>
@@ -1274,7 +1366,7 @@ function App() {
               Refresh
             </button>
           </div>
-          {showFullDetail ? (
+          {showSupportCopy ? (
             <>
               <p className="support-copy">
                 Trading uses the demo visitor character `{runtime?.visitorCharacterId ?? "n/a"}`. On
@@ -1289,6 +1381,7 @@ function App() {
           ) : null}
         </article>
 
+        {showOwnerPanel ? (
         <article className="card owner-card">
           <p className="section-label">{showFullDetail ? "Owner Governance" : "Edit Unit"}</p>
           <div className="owner-callout">
@@ -1296,10 +1389,10 @@ function App() {
               This panel follows the base assembly edit flow: inspect the current policy, change it transparently,
               then freeze it when the market terms are final.
             </p>
-            <p>
+            {showSupportCopy ? <p>
               Locker branding and general assembly metadata remain part of the existing EVE Frontier Edit Unit flow.
               Trust Locker-specific owner control starts here.
-            </p>
+            </p> : null}
           </div>
 
           <div className="catalog-editor">
@@ -1421,7 +1514,7 @@ function App() {
                 }
               />
             </label>
-            {showFullDetail ? (
+            {showAdvancedOwnerControls ? (
               <label>
                 Strike scope ID
                 <input
@@ -1481,7 +1574,7 @@ function App() {
             </div>
           </div>
 
-          {showFullDetail ? (
+          {showAdvancedOwnerControls ? (
             <div className="preview-card neutral shared-policy-card">
               <p className="preview-pill">Strike network policy</p>
               <p className="preview-detail">
@@ -1633,7 +1726,7 @@ function App() {
               Freeze locker
             </button>
           </div>
-          {showFullDetail ? (
+          {showSupportCopy ? (
             <>
               <p className="support-copy">
                 Owner actions use the owner character `{runtime?.ownerCharacterId ?? "n/a"}`. On
@@ -1647,8 +1740,9 @@ function App() {
             </>
           ) : null}
         </article>
+        ) : null}
 
-        {showFullDetail ? (
+        {showSignalsPanel ? (
         <article className="card signals-card">
           <p className="section-label">Recent Locker Signals</p>
           <ul className="signal-list">
@@ -1667,12 +1761,13 @@ function App() {
         </article>
         ) : null}
 
+        {(uiCapabilities.showActionStatusPanel || showCompactActionStatus) ? (
         <article className="card status-trace-card">
           <p className="section-label">Wallet Action Status</p>
           <p className={`action-status ${actionState.status}`}>{actionState.label}</p>
           <p className="support-copy">{actionState.message ?? "No wallet action has been attempted yet."}</p>
           {actionState.digest ? <p className="support-copy">Digest: {actionState.digest}</p> : null}
-          {showFullDetail ? (
+          {showSupportCopy ? (
             <p className="support-copy">
               Current submission scope keeps Utopia as read-only validation. Localnet browser proof now
               uses an explicit local-only demo signer path when no suitable wallet extension exists for
@@ -1680,6 +1775,7 @@ function App() {
             </p>
           ) : null}
         </article>
+        ) : null}
       </section>
     </main>
   );

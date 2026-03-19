@@ -13,7 +13,7 @@ Strikes are currently **per character per locker**, not global across the world.
 - It keeps the mechanic legible and fair while players experiment with different locker policies
 - It avoids accidental global punishment if many owners publish predatory lockers
 - It preserves a clean future upgrade path to an optional global trust layer
-- Submission readiness is a production-grade local/testnet demo plus honest Utopia read-only validation; live Utopia writes are stretch, not baseline
+ - Submission readiness is a production-grade localnet demo plus Utopia public hardening and owned-cutover validation; live Utopia writes belong to the Utopia cutover path, not a separate generic testnet stage
 - Browser-side owner policy writes and visitor trade execution are part of the submission baseline
 
 `Trust Locker` is also a placeholder name. All lanes should preserve current file/package identifiers unless the orchestrator explicitly approves a rename pass.

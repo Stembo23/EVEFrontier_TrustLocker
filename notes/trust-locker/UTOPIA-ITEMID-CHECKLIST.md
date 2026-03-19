@@ -16,7 +16,7 @@ Official sources:
 ## Practical Checklist
 
 1. Open the local Trust Locker dApp in the browser and enable EVE Vault again if you had disabled it for the localnet proof.
-2. Click `Connect Wallet` and connect EVE Vault on testnet/Utopia.
+2. Click `Connect Wallet` and connect EVE Vault on Utopia.
 3. In the `Utopia Object Discovery` panel:
    - click `Load owned objects` if the connected wallet already owns Utopia objects, or
    - click `Load public Utopia objects` if you have no owned objects yet

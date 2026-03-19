@@ -7,6 +7,8 @@
     "build": "tsc --noEmit && vite build",
     "dev": "vite",
     "preview": "vite preview --host 0.0.0.0 --port 4179",
+    "deploy:cloudflare:preview": "pnpm build && pnpm dlx wrangler@latest pages deploy dist --project-name trust-locker",
+    "deploy:cloudflare:prod": "pnpm build && pnpm dlx wrangler@latest pages deploy dist --project-name trust-locker --branch main",
     "vercel-build": "pnpm build",
     "deploy:vercel:preview": "pnpm dlx vercel@latest deploy --prebuilt",
     "deploy:vercel:prod": "pnpm dlx vercel@latest deploy --prebuilt --prod",

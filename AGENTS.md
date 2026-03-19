@@ -8,6 +8,7 @@ Phase 2 extends the MVP into:
 - a hosted in-world assembly dApp that opens in the in-game browser when players press `F`
 - a dual-mode UI (`full` and `in-game`)
 - shared strike persistence across owner-defined Trust Locker networks
+- Utopia public hardening, then owned-Utopia cutover, then post-cutover hardening
 - a dual audit gate before Phase 2 is considered complete
 
 ## Canonical Vocabulary
@@ -28,9 +29,11 @@ Phase 2 extends the MVP into:
 - Single locker extension package
 - Single requested item type plus single offered item type per trade
 - Curated allowlist only
-- Local/testnet full demo first
+- Localnet full demo first
+- Utopia public hardening after localnet parity is frozen
 - Hosted app used for both standalone browser and in-game browser
 - Utopia in-game cutover only after the hosted app is validated on a controlled assembly
+- Owned-Utopia cutover is the final live deployment milestone
 - Shared strike persistence is owner-defined by strike network, not world-global
 
 ## No-Scope-Creep Rules
@@ -73,7 +76,7 @@ Phase 2 extends the MVP into:
   - `view=in-game`
 - Must maintain the explicit split between:
   - localnet browser proof via the unsafe local-only demo signer
-  - Utopia/testnet browser proof via a real wallet connection
+  - Utopia browser proof via a real wallet connection
 - Must treat on-chain `type_id` as the canonical item key
 
 ### QA / Demo Lane

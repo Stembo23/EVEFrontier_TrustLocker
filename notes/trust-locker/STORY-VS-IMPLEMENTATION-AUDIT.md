@@ -30,7 +30,7 @@ Date: 2026-03-17 (America/Los_Angeles)
 - **Frontend now uses live localnet reads** for locker policy, trust state, penalty state, inventory balances, and recent signals, but the browser-side manual proof run still needs to be captured.
 - **Script lane now has full localnet transaction automation** for publish/configure/seed/open-visitor/trade flows, plus read-side inspect/signals helpers.
 - **Rival-pricing behavior is locally proven** through a real tribe update and a live quoted-point change, but not yet through a dedicated rival trade transcript.
-- **Submission docs now exist** for the operator runbook and proof matrix, and now describe the local-demo-signer split versus the Utopia/testnet wallet path.
+- **Submission docs now exist** for the operator runbook and proof matrix, and now describe the local-demo-signer split versus the Utopia wallet path.
 
 ## What is not yet aligned
 
