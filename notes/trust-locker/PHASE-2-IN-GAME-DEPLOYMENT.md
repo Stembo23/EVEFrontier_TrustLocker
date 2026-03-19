@@ -8,7 +8,8 @@ GitHub + Cloudflare Pages is the primary deployment path. Vercel remains a secon
 
 - Hosted app base URL: `https://<your-host>/`
 - Full-detail browser mode: `https://<your-host>/?view=full`
-- In-game browser mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=in-game`
+- Owner browser mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=owner`
+- Visitor browser mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=visitor`
 - Localnet browser proof: `http://127.0.0.1:4179/?view=full`
 - The chosen host should serve the app as a static SPA with rewrite-to-index behavior.
 - For Cloudflare Pages, the SPA fallback comes from `apps/utopia-smart-assembly/public/_redirects`.
@@ -53,7 +54,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 
 - Deploy the browser app to a stable HTTPS host.
 - Validate `?view=full` in a normal browser.
-- Validate `?tenant=utopia&itemId=...&view=in-game` with EVE Vault on Utopia.
+- Validate `?tenant=utopia&itemId=...&view=owner` and `?tenant=utopia&itemId=...&view=visitor` with EVE Vault on Utopia.
 - Confirm the app resolves:
   - assembly identity
   - inventory
@@ -67,7 +68,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 
 - Obtain or control a real Utopia storage unit.
 - Confirm you can edit the unit’s custom URL.
-- Point the custom URL at the hosted Barter Box app with `view=in-game`.
+- Point the custom URL at the hosted Barter Box app with `view=visitor`.
 - Validate the in-game `F` interaction opens the hosted app.
 - Confirm owner-specific controls appear only for owner-capable accounts.
 - Treat this as the real in-game integration milestone.
@@ -86,17 +87,18 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Deploy the app to a stable HTTPS host.
 - [ ] Confirm the root URL loads without a trailing slash requirement.
 - [ ] Confirm `?view=full` renders the full-detail mode.
-- [ ] Confirm `?view=in-game` renders the compact in-game mode.
+- [ ] Confirm `?view=owner` renders the guided owner mode.
+- [ ] Confirm `?view=visitor` renders the compact visitor mode.
 - [ ] Confirm query parameters survive reloads and mode toggles.
 - [ ] Confirm the hosted app serves as a single codebase for both browser and in-game use.
-- [ ] Confirm the final in-game UI is still treated as work in progress until the remaining polish pass is complete.
+- [ ] Confirm the final visitor and owner UI is still treated as work in progress until the remaining polish pass is complete.
 
 ### Browser Validation
 
-- [ ] Confirm the external browser path opens a real Utopia object with `?tenant=utopia&itemId=...`.
+- [ ] Confirm the external browser path opens a real Utopia object with `?tenant=utopia&itemId=...&view=full`.
 - [ ] Confirm EVE Vault connects cleanly for Utopia validation.
 - [ ] Confirm the app resolves the assembly context from a real `itemId`.
-- [ ] Confirm the UI does not expose localnet-only demo signer controls in in-game mode.
+- [ ] Confirm the UI does not expose localnet-only demo signer controls in owner or visitor mode.
 
 ### Utopia Cutover
 
@@ -104,7 +106,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm you have permission to edit that unit’s custom URL.
 - [ ] Set the custom URL to the hosted Barter Box app.
 - [ ] Use the in-game `F` interaction to open the hosted app from the unit.
-- [ ] Confirm the in-game browser lands in `view=in-game` by default.
+- [ ] Confirm the in-game browser lands in `view=visitor` by default.
 - [ ] Capture the final hosted URL and cutover proof for submission.
 
 ### Cutover Preconditions

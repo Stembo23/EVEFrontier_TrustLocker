@@ -58,10 +58,6 @@ textarea {
   padding: 18px 18px 42px;
 }
 
-.app-shell.mode-in-game {
-  padding-top: 12px;
-}
-
 .hero {
   max-width: 1400px;
   margin: 0 auto 16px;
@@ -562,80 +558,12 @@ textarea {
   color: var(--danger);
 }
 
-.app-shell.mode-in-game .hero {
-  margin-bottom: 10px;
-}
-
-.app-shell.mode-in-game .hero-copy {
-  max-width: 46ch;
-}
-
-.app-shell.mode-in-game .hero-text,
-.app-shell.mode-in-game .connection-note,
-.app-shell.mode-in-game .support-copy,
-.app-shell.mode-in-game .owner-callout p + p {
-  display: none;
-}
-
-.app-shell.mode-in-game .layout-grid {
-  grid-template-columns: 1.05fr 0.95fr;
-}
-
-.app-shell.mode-in-game .card {
-  padding: 14px;
-}
-
-.app-shell.mode-in-game .assembly-card {
-  grid-column: 1 / -1;
-}
-
-.app-shell.mode-in-game .summary-card {
-  grid-column: 2;
-  grid-row: span 2;
-}
-
-.app-shell.mode-in-game .trade-card {
-  grid-column: 1 / -1;
-}
-
-.app-shell.mode-in-game .fact-grid,
-.app-shell.mode-in-game .owner-controls,
-.app-shell.mode-in-game .preview-metrics {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.app-shell.mode-in-game .item-row {
-  padding: 10px 12px;
-}
-
-.app-shell.mode-in-game .item-main p {
-  display: none;
-}
-
-.app-shell.mode-in-game .trade-card .owner-controls {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.app-shell.mode-in-game .preview-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.app-shell.mode-in-game .hero-copy h1 {
-  font-size: clamp(1.4rem, 2vw, 2rem);
-}
-
-.app-shell.mode-in-game .status-trace-card {
-  grid-column: 1 / -1;
-}
-
 @media (max-width: 1100px) {
-  .layout-grid,
-  .app-shell.mode-in-game .layout-grid {
+  .layout-grid {
     grid-template-columns: 1fr;
   }
 
   .summary-card,
-  .app-shell.mode-in-game .summary-card,
   .trade-card,
   .owner-card,
   .status-trace-card {
@@ -666,11 +594,7 @@ textarea {
   .preview-metrics,
   .trade-grid,
   .signer-grid,
-  .signer-status-grid,
-  .app-shell.mode-in-game .fact-grid,
-  .app-shell.mode-in-game .owner-controls,
-  .app-shell.mode-in-game .preview-metrics,
-  .app-shell.mode-in-game .trade-card .owner-controls {
+  .signer-status-grid {
     grid-template-columns: 1fr;
   }
 
@@ -683,5 +607,218 @@ textarea {
   .item-meta {
     justify-items: start;
     text-align: left;
+  }
+}
+
+.mode-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.mode-chip {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.mode-chip:last-child {
+  border-right: 0;
+}
+
+.mode-chip.active {
+  background: rgba(240, 106, 29, 0.18);
+  color: var(--text);
+}
+
+.mode-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.section-heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.step-index {
+  min-width: 52px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(240, 106, 29, 0.38);
+  background: rgba(240, 106, 29, 0.12);
+  color: var(--accent-strong);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
+.section-heading .section-label {
+  margin-bottom: 6px;
+}
+
+.section-copy {
+  margin: 0;
+  color: var(--muted);
+  max-width: 64ch;
+}
+
+.layout-full {
+  grid-template-columns: 1fr;
+}
+
+.layout-owner,
+.layout-visitor {
+  grid-template-columns: 1.05fr 0.95fr;
+}
+
+.layout-full .card,
+.layout-full .assembly-card,
+.layout-full .status-trace-card {
+  grid-column: auto;
+}
+
+.paired-grid,
+.owner-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.owner-stage {
+  display: grid;
+  gap: 12px;
+}
+
+.owner-publish-stage {
+  margin-top: 14px;
+}
+
+.owner-preview-card {
+  margin-top: 0;
+}
+
+.status-trace {
+  display: grid;
+  gap: 8px;
+}
+
+.trade-summary-grid {
+  margin-bottom: 14px;
+}
+
+.layout-full .hero-copy {
+  max-width: 68ch;
+}
+
+.layout-visitor .assembly-card,
+.layout-owner .assembly-card {
+  grid-column: 1 / -1;
+}
+
+.mode-visitor .hero,
+.mode-owner .hero {
+  margin-bottom: 10px;
+}
+
+.mode-visitor .hero-copy,
+.mode-owner .hero-copy {
+  max-width: 50ch;
+}
+
+.mode-visitor .hero-copy h1,
+.mode-owner .hero-copy h1 {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.mode-visitor .hero-text,
+.mode-owner .hero-text {
+  max-width: 46ch;
+}
+
+.mode-visitor .card,
+.mode-owner .card {
+  padding: 14px;
+}
+
+.mode-visitor .fact-grid,
+.mode-owner .fact-grid,
+.mode-visitor .owner-controls,
+.mode-owner .owner-controls,
+.mode-visitor .preview-metrics,
+.mode-owner .preview-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mode-visitor .item-main p,
+.mode-owner .item-main p {
+  display: none;
+}
+
+.mode-visitor .item-row,
+.mode-owner .item-row {
+  padding: 10px 12px;
+}
+
+.mode-visitor .trade-card {
+  grid-column: 1 / -1;
+}
+
+.mode-owner .owner-card {
+  grid-column: 1 / -1;
+}
+
+.mode-owner .summary-card {
+  grid-column: 1 / -1;
+}
+
+.mode-owner .owner-stage-grid {
+  grid-template-columns: 1fr;
+}
+
+.mode-owner .catalog-editor {
+  max-height: none;
+}
+
+.mode-visitor .connection-note,
+.mode-visitor .support-copy,
+.mode-owner .connection-note,
+.mode-owner .support-copy {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .layout-owner,
+  .layout-visitor,
+  .paired-grid,
+  .owner-stage-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .section-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-switch {
+    width: 100%;
+  }
+
+  .mode-chip {
+    flex: 1 1 33%;
   }
 }

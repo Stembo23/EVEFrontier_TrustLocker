@@ -2,7 +2,7 @@
 
 Date: 2026-03-18
 
-Scope: Barter Box Move package, browser dApp, local demo signer flow, hosted/in-game readiness surfaces, and Phase 2 coordination docs.
+Scope: Barter Box Move package, browser dApp, local demo signer flow, hosted visitor/owner readiness surfaces, and Phase 2 coordination docs.
 
 Method:
 - Reviewed [AGENTS.md](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/AGENTS.md)
@@ -14,7 +14,7 @@ Method:
 
 ## Executive Summary
 
-Phase 2 is materially stronger than the MVP baseline. The Move package now implements shared strike networks, the browser app builds cleanly, the dual-mode UI contract exists in code, and the unsafe local demo signer is gated to localnet full-detail mode. The main remaining audit risk is not a functional exploit identified in code review; it is release discipline around Utopia hardening/cutover and the incomplete external-prover signoff.
+Phase 2 is materially stronger than the MVP baseline. The Move package now implements shared strike networks, the browser app builds cleanly, the three-view UI contract exists in code, and the unsafe local demo signer is gated to localnet full-detail mode. The main remaining audit risk is not a functional exploit identified in code review; it is release discipline around Utopia hardening/cutover and the incomplete external-prover signoff.
 
 ## Findings
 
@@ -27,7 +27,7 @@ Phase 2 is materially stronger than the MVP baseline. The Move package now imple
 ## Verification Notes
 
 - `sui move test` passed with 13/13 tests.
-- `pnpm build` now fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch.
+- `pnpm build` passes at head.
 - `pnpm locker:set-strike-network --dry-run` passed.
 - The external auditor CLI executed deterministically against the Move package, but the scan remains incomplete because the prover stage failed.
 - The sampled Utopia public object route resolves real assembly context, but that is a read-only context proof, not a Barter Box deployment proof.
@@ -37,4 +37,4 @@ Phase 2 is materially stronger than the MVP baseline. The Move package now imple
 1. Complete the owned-Utopia hosted cutover proof.
 2. Resolve or explicitly accept the external prover-stage failure.
 3. Keep the local demo signer isolated to localnet proof only.
-4. Finish the remaining visual polish for the in-game mode.
+4. Finish the remaining visual polish for the visitor and owner modes.

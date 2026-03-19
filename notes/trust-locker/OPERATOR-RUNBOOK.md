@@ -87,7 +87,7 @@ Use this only when you need the granular commands behind `prepare` and `verify`.
 
 ## Utopia Read-Only Validation
 
-- Open the external-browser entry with `?tenant=utopia&itemId=...`
+- Open the external-browser entry with `?tenant=utopia&itemId=...&view=full`
 - Connect EVE Vault
 - Confirm the assembly context loads and the locker/object identity is correct
 - If you do not already have a live `itemId`, open the target object in the browser and copy the `itemId` value from the URL query string or the object header before starting this step
@@ -99,13 +99,13 @@ Use this only when you need the granular commands behind `prepare` and `verify`.
 Use this only when you are ready to point a real storage unit at the hosted app.
 
 1. Confirm the hosted app is deployed and reachable over HTTPS.
-2. Confirm `?view=full` and `?view=in-game` both render correctly on the hosted URL.
-3. Confirm the in-game browser opens the hosted app on a controlled assembly.
-4. Confirm the in-game layout hides local demo signer and other proof-only controls.
+2. Confirm `?view=full`, `?view=owner`, and `?view=visitor` all render correctly on the hosted URL.
+3. Confirm the visitor browser opens the hosted app on a controlled assembly.
+4. Confirm the visitor layout hides local demo signer and other proof-only controls.
 5. Obtain a real Utopia storage unit that you own or can edit.
 6. Set that unit’s custom URL to the hosted Barter Box app.
 7. Open the unit in-game with `F`.
-8. Confirm the hosted app loads in the in-game browser with the expected `itemId`.
+8. Confirm the hosted app loads in the in-game browser with the expected `itemId` and `view=visitor`.
 9. Capture the final hosted URL, unit identity, and screenshot proof.
 
 ### Deployment Commands

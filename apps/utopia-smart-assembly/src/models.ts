@@ -1,6 +1,6 @@
 import type { CatalogItem, LockerPolicyDraft } from "../trust-locker.config";
 
-export type UiMode = "full" | "in-game";
+export type UiMode = "full" | "owner" | "visitor";
 export type RuntimeEnvironment = "localnet" | "utopia-browser" | "utopia-in-game";
 
 export type RelationshipBucket = "friendly" | "neutral" | "rival";
@@ -39,6 +39,9 @@ export type UiCapabilities = {
   showAdvancedOwnerControls: boolean;
   showLocalnetProofNotes: boolean;
   showActionStatusPanel: boolean;
+  showVisitorWorkspace: boolean;
+  showOwnerWorkspace: boolean;
+  showGuidedFullFlow: boolean;
 };
 
 export type OwnerState = {

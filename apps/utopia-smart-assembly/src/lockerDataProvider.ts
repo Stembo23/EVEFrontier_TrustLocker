@@ -46,13 +46,15 @@ function resolveRuntimeEnvironment(args: {
 }): RuntimeEnvironment {
   if (args.runtimeNetwork === "localnet") return "localnet";
   if (args.tenant === "utopia") {
-    return args.viewMode === "in-game" ? "utopia-in-game" : "utopia-browser";
+    return args.viewMode === "visitor" ? "utopia-in-game" : "utopia-browser";
   }
-  return args.viewMode === "in-game" ? "utopia-in-game" : "utopia-browser";
+  return args.viewMode === "visitor" ? "utopia-in-game" : "utopia-browser";
 }
 
 function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode: UiMode): UiCapabilities {
   const isFull = viewMode === "full";
+  const isOwner = viewMode === "owner";
+  const isVisitor = viewMode === "visitor";
   const isLocalnet = runtimeEnvironment === "localnet";
 
   return {
@@ -60,9 +62,12 @@ function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode:
     showDiscovery: isFull,
     showSignals: isFull,
     showSupportCopy: isFull,
-    showAdvancedOwnerControls: isFull,
+    showAdvancedOwnerControls: isFull || isOwner,
     showLocalnetProofNotes: isFull && isLocalnet,
     showActionStatusPanel: isFull,
+    showVisitorWorkspace: isFull || isVisitor,
+    showOwnerWorkspace: isFull || isOwner,
+    showGuidedFullFlow: isFull,
   };
 }
 

@@ -12,7 +12,7 @@ This is the short version for orchestration.
 ## Next Priority
 
 - **Medium:** Capture a polished multi-locker shared-network demo in the browser if we want stronger presentation proof beyond tests.
-- **Low:** Continue the in-game visual polish pass.
+- **Low:** Continue the visitor and owner visual polish pass.
 
 ## Lower Priority
 
@@ -21,7 +21,7 @@ This is the short version for orchestration.
 ## Audit State
 
 - `sui move test`: passed, 13/13.
-- `pnpm build`: currently failing in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch.
+- `pnpm build`: passes at head.
 - External auditor Move scan: 0 findings, but the prover stage failed and the run is not a final signoff.
 - External auditor offchain scan: not available from the current CLI because it expects a `Move.toml`.
 - Utopia read-only context: validated separately, but it is not a Barter Box deployment proof.

@@ -5,14 +5,15 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 ## Phase 2 Extension Gates
 
 - [ ] Hosted app URL exists and is stable over HTTPS.
-- [x] `view=full` and `view=in-game` both render correctly in the app build and URL contract.
+- [x] `view=full`, `view=owner`, and `view=visitor` all render correctly in the app build and URL contract.
 - [x] The hosted URL contract is documented in [`PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md).
-- [x] In-Game mode removes debug-only panels and test scaffolding.
+- [x] Visitor mode removes debug-only panels and test scaffolding.
+- [x] Owner mode presents the guided setup/control surface.
 - [x] Shared strike persistence works across lockers in the same strike network.
 - [x] Shared strike persistence does not leak across unrelated strike networks.
 - [x] Internal audit findings are triaged.
 - [ ] External auditor findings are triaged.
-- [ ] Controlled in-game storage unit opens the hosted app via `F`.
+- [ ] Controlled Utopia storage unit opens the hosted app via `F`.
 
 ## Demo Readiness Gate
 

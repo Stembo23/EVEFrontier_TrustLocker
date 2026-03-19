@@ -11,17 +11,19 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
 - `scripts`
   - Local publish, configure, seed, and demo helpers
 - `src`
-  - Visitor and owner browser dApp for locker configuration and trading
+  - Full, owner, and visitor browser dApp for locker configuration and trading
 
 ## Current Delivery Strategy
 
 - Build the full loop locally first against our own sandbox world
 - Use one hosted app for:
   - standalone judging/debugging
-  - in-game assembly interaction
+  - owner setup
+  - visitor in-game assembly interaction
 - Keep the hosted URL contract explicit:
   - `https://<your-pages-project>.pages.dev/?view=full`
-  - `https://<your-pages-project>.pages.dev/?tenant=utopia&itemId=<item_id>&view=in-game`
+  - `https://<your-pages-project>.pages.dev/?tenant=utopia&itemId=<item_id>&view=owner`
+  - `https://<your-pages-project>.pages.dev/?tenant=utopia&itemId=<item_id>&view=visitor`
   - `view` controls presentation only; `tenant` and `itemId` provide world context
 - Preserve honest staged rollout:
   - localnet first
@@ -33,7 +35,7 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
 - For localnet browser proof, use the built-in unsafe local-only demo signer instead of chasing wallet-extension custom-RPC support
 - For Utopia browser proof, use a real wallet connection such as EVE Vault
 - Run a dual audit gate before calling Phase 2 complete
-- Treat the final in-game UI as a work in progress, not a finished visual pass
+- Treat the final owner and visitor UI passes as a work in progress, not a finished visual pass
 
 ## Hosting and Deployment
 
@@ -47,7 +49,8 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 - No deployment-time secrets are required for the hosted frontend path today.
 - `view` changes presentation only:
   - `view=full` keeps the judging and proof surfaces visible
-  - `view=in-game` hides local-only and proof-only tools
+  - `view=owner` shows the guided setup/control surface
+  - `view=visitor` hides local-only and proof-only tools
 - `tenant` and `itemId` are the world-context inputs from EVE Frontier or the external-browser URL.
 - The local demo signer is intentionally localnet-only and must not be treated as a hosted Utopia assumption.
 
@@ -55,7 +58,8 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 
 - Base host: `https://<your-host>/`
 - Full-detail mode: `https://<your-host>/?view=full`
-- In-game mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=in-game`
+- Owner mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=owner`
+- Visitor mode: `https://<your-host>/?tenant=utopia&itemId=<item_id>&view=visitor`
 - Browser validation should preserve `tenant` and `itemId` while toggling `view`.
 
 ### Deployment flow
@@ -66,7 +70,7 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
    - Vercel only as a secondary fallback
 3. Publish a preview or staging build.
 4. Validate the hosted URL in a normal browser.
-5. Verify both `view=full` and `view=in-game` on the hosted URL.
+5. Verify `view=full`, `view=owner`, and `view=visitor` on the hosted URL.
 6. Keep the owned-Utopia in-game cutover as a separate final handoff step.
 
 ### Script contract
@@ -93,11 +97,12 @@ Barter Box turns a Storage Unit into a programmable social market:
 - localnet browser writes now use a gated unsafe local-only demo signer for repeatable proof
 - the browser dApp now includes a Utopia object-discovery panel that can list owned objects and also query public Utopia storage units, gates, and network nodes for sample `item_id` values
 - shared strike persistence is implemented through owner-defined strike networks
-- the UI will support both:
+- the UI supports three views:
   - `Full Detail` mode for judges/debug
-  - `In-Game` mode for player-facing assembly interaction
-- the in-game mode is intentionally transaction-first and omits owner governance by default; owner controls remain available in `view=full`
-- the final in-game UI polish is still in progress
+  - `Owner` mode for guided setup/control
+  - `Visitor` mode for player-facing assembly interaction
+- the visitor mode is intentionally transaction-first and omits owner governance by default; owner controls live in `view=owner`
+- the final owner and visitor UI polish is still in progress
 - the same hosted app will serve standalone browser and in-game browser contexts via the shared `tenant` + `itemId` + `view` URL contract
 - Cloudflare Pages is the primary hosted path, with Vercel kept as a fallback
 

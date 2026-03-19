@@ -24,16 +24,17 @@ It turns a storage unit into a player-run social market:
 The project is beyond the initial MVP and currently includes:
 
 - local/testnet end-to-end trading flows
-- browser-based owner and visitor interactions
-- dual UI modes:
+- browser-based full, owner, and visitor interactions
+- three UI modes:
   - `view=full` for judging, debugging, and proof capture
-  - `view=in-game` for player-facing assembly interaction
+  - `view=owner` for guided setup and control
+  - `view=visitor` for player-facing assembly interaction
 - owner-defined shared strike networks across multiple lockers
 - local proof flows and Utopia read-only context validation
 
 Still in progress:
 
-- final in-game UI polish
+- final visitor and owner UI polish
 - hosted deployment and owned-Utopia in-game cutover
 - final audit signoff
 
@@ -136,8 +137,10 @@ Hosted URL contract:
 
 - full-detail mode:
   - `https://<host>/?view=full`
-- in-game mode:
-  - `https://<host>/?tenant=utopia&itemId=<item_id>&view=in-game`
+- owner mode:
+  - `https://<host>/?tenant=utopia&itemId=<item_id>&view=owner`
+- visitor mode:
+  - `https://<host>/?tenant=utopia&itemId=<item_id>&view=visitor`
 
 `tenant` and `itemId` provide world context. `view` controls presentation only.
 
@@ -147,10 +150,10 @@ Cloudflare Pages is the primary host. Vercel stays available as a fallback.
 
 Near-term priorities:
 
-- finish final in-game UI polish
+- finish final owner and visitor UI polish
 - deploy the hosted app publicly
 - point a controlled Utopia storage unit at the hosted app
-- validate the in-game `F` interaction path
+- validate the visitor `F` interaction path
 - complete internal and external audit signoff
 
 Deferred:

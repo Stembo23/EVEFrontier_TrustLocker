@@ -9,18 +9,19 @@
 - The browser dApp now has real owner policy update/freeze actions and visitor trade execution wired through both:
   - the normal wallet transaction layer
   - a gated unsafe local-only demo signer path for localnet proof
-- `pnpm build` currently fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch; the hosting docs are valid, but the UI/source lane needs to repair the build before release.
+- `pnpm build` passes at head.
 - Browser cooldown blocking is now verified through explicit UI lock state and countdown behavior, not just transaction history.
 - Phase 2 is now active:
   - Utopia public hardening
   - owned Utopia cutover
   - in-game integration milestone
-  - dual-mode UI
+  - three-view UI
   - shared strike persistence
   - dual audit gate
 - The hosted URL contract is documented and aligned to the current hosted-SPA setup:
   - `?view=full` for judge/debug mode
-  - `?tenant=utopia&itemId=...&view=in-game` for the in-game browser contract
+  - `?tenant=utopia&itemId=...&view=owner` for the owner setup contract
+  - `?tenant=utopia&itemId=...&view=visitor` for the in-game browser contract
 - The hosting lane is now Cloudflare-first:
   - GitHub + Cloudflare Pages is the primary static-SPA path
   - `apps/utopia-smart-assembly/public/_redirects` provides SPA fallback
@@ -37,17 +38,18 @@
 - Submission proof matrix in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/SUBMISSION-PROOF-MATRIX.md`
 - Browser-side localnet runtime with live policy, inventory, signal, and mutation support in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/src`
 - Local-only demo signer path in the browser dApp for owner/visitor localnet proof without a wallet extension custom-RPC dependency
-- Dual-mode browser UI:
+- Three-view browser UI:
   - `view=full` for judge/debug/proof surfaces
-  - `view=in-game` for compact player-facing assembly interaction
-- In-game mode is now intentionally transaction-first:
+  - `view=owner` for guided setup/control
+  - `view=visitor` for compact player-facing assembly interaction
+- Visitor mode is now intentionally transaction-first:
   - assembly identity
   - shelf inventory
   - visitor hold
   - points / quantity / volume
   - cooldown / network penalty state
   - trade execution
-  - owner governance remains in `view=full` rather than the default in-game surface
+- Owner governance remains in `view=owner` rather than the default visitor surface
 - Shared strike persistence in the Move package and browser app:
   - owner-defined `strike_scope_id`
   - opt-in `use_shared_penalties`
@@ -69,7 +71,7 @@
 ## Verified
 
 - `sui move test` passes with 13 tests.
-- `pnpm build` was previously green, but the current tree now fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch and needs a source-lane fix before release signoff.
+- `pnpm build` passes at head.
 - `pnpm locker:set-strike-network --dry-run` works.
 - `resolveLocalnetLockerSnapshot()` now resolves real localnet policy, inventory, and recent signal data without falling back to demo values.
 - `pnpm demo:reset` works.
@@ -126,7 +128,7 @@
 
 ## Remaining Gaps
 
-- Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like in-game information layout, but it still needs a stronger asset/icon pass before calling the in-game UI finished.
+- Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like visitor/owner information layout, but it still needs a stronger asset/icon pass before calling those views finished.
 - Hosted deployment and in-game custom URL cutover are documented and ready for a real Utopia storage-unit handoff.
 - Phase 2 audit gate is partially complete:
   - internal review is documented
@@ -136,7 +138,7 @@
 - Utopia migration still has one remaining live ownership milestone:
   - point a real owned Utopia storage unit at the hosted Barter Box app and validate `F` opening the in-game browser
 - Owned Utopia storage-unit cutover is still pending user-side control/permissions.
-- Final in-game visual polish is still open and should stay treated as WIP until the next asset pass.
+- Final visitor and owner visual polish is still open and should stay treated as WIP until the next asset pass.
 
 ## Deferred v2
 

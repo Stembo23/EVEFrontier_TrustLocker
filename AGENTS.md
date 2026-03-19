@@ -6,7 +6,7 @@
 
 Phase 2 extends the MVP into:
 - a hosted in-world assembly dApp that opens in the in-game browser when players press `F`
-- a dual-mode UI (`full` and `in-game`)
+- a three-view UI (`full`, `owner`, and `visitor`)
 - shared strike persistence across owner-defined Barter Box networks
 - Utopia public hardening, then owned-Utopia cutover, then post-cutover hardening
 - a dual audit gate before Phase 2 is considered complete
@@ -73,7 +73,8 @@ Phase 2 extends the MVP into:
 - Must support browser-side owner policy writes and visitor trade execution in the submission path
 - Must support both:
   - `view=full`
-  - `view=in-game`
+  - `view=owner`
+  - `view=visitor`
 - Must maintain the explicit split between:
   - localnet browser proof via the unsafe local-only demo signer
   - Utopia browser proof via a real wallet connection

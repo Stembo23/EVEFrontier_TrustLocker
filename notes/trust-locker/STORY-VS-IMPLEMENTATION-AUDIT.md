@@ -8,7 +8,7 @@ Date: 2026-03-17 (America/Los_Angeles)
 - Owners publish transparent rules: accepted items, point values, and tribe-sensitive pricing.
 - Visitors can underpay, but the system remembers and penalizes through strike + cooldown.
 - Frozen configuration increases trust because the owner can no longer mutate policy.
-- Phase 2 extends the mechanic into a real in-game assembly dApp with a cleaner player-facing mode.
+- Phase 2 extends the mechanic into a real in-world assembly dApp with a cleaner player-facing visitor mode and a guided owner setup mode.
 - Phase 2 also adds shared strike persistence across owner-defined locker networks.
 
 ## Current Implementation Reality
@@ -39,9 +39,9 @@ Date: 2026-03-17 (America/Los_Angeles)
 - **In-game deployment** is not yet aligned:
   - we do not have a hosted public app
   - we do not have a controlled in-game storage unit wired to that hosted URL
-- **Dual-mode UI** is aligned functionally but not visually complete:
-  - `full` vs `in-game` separation exists
-  - the in-game mode is cleaner, but the final art/polish pass is still open
+- **Three-view UI** is aligned functionally but not visually complete:
+  - `full`, `owner`, and `visitor` separation exists
+  - the visitor and owner modes are cleaner, but the final art/polish pass is still open
 - **Shared strike persistence** is aligned locally:
   - penalties now persist across owner-defined strike networks
   - the mechanism is tested
@@ -90,4 +90,4 @@ Renaming mid-implementation could break coordination unless explicitly orchestra
 
 ## Acceptance Position (Current)
 
-- **Phase 2 partially accepted:** shared strike persistence and dual-mode UI are implemented and verified locally; hosted owned-unit cutover and final audit signoff remain open.
+- **Phase 2 partially accepted:** shared strike persistence and the three-view UI are implemented and verified locally; hosted owned-unit cutover and final audit signoff remain open.
