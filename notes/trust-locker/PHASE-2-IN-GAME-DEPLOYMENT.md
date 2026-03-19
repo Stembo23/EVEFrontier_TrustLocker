@@ -37,6 +37,12 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - The hosted app is the same codebase used in standalone browser and in-game browser contexts.
 - The local demo signer is localnet-only and must not be exposed as a hosted Utopia assumption.
 - No deployment-time secrets are required for the hosted frontend path today.
+- `view=owner` remains the guided setup/control surface, and future owner-incentive controls should live there rather than in `view=visitor`.
+- `view=visitor` remains the player-facing trade surface.
+- Fuel fees are currently deferred because the feasibility spike did not prove a character-side Fuel debit/credit path.
+- The fallback owner-incentive design is a market-mode split:
+  - `perpetual_market` for the current shelf-circulation behavior
+  - `procurement_market` for visitor receipts that route into the same storage unit's owner reserve
 
 ## Migration Stages
 
@@ -61,6 +67,9 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - policy
   - trade preview
   - owner/visitor role detection
+- Keep the owner-incentive narrative explicit:
+  - public docs should state whether the active market mode is `perpetual_market` or `procurement_market`
+  - public docs should state that Fuel fees are deferred until the payment path is proven
 - Keep hosted/Utopia routes free of local demo signer controls.
 - If writes fail in Utopia, record the exact failure and keep Stage B as read-only plus context validation until fixed.
 
@@ -69,6 +78,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - Obtain or control a real Utopia storage unit.
 - Confirm you can edit the unit’s custom URL.
 - Point the custom URL at the hosted Barter Box app with `view=visitor`.
+- If the owner-flow includes market-mode setup, keep that in `view=owner` and document it separately from the in-game visitor path.
 - Validate the in-game `F` interaction opens the hosted app.
 - Confirm owner-specific controls appear only for owner-capable accounts.
 - Treat this as the real in-game integration milestone.

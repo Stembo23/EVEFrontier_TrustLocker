@@ -16,6 +16,7 @@ import {
   PRODUCT_WORKING_NAME,
   TRUST_LOCKER_CATALOG,
   type LockerPolicyDraft,
+  type MarketMode,
 } from "../trust-locker.config";
 import {
   createLocalDemoSignerExecutor,
@@ -68,6 +69,8 @@ type OwnerPolicyForm = {
   rivalTribesText: string;
   friendlyMultiplierBps: number;
   rivalMultiplierBps: number;
+  marketMode: MarketMode;
+  fuelFeeUnits: number;
   cooldownMs: number;
   strikeScopeId: number;
   useSharedPenalties: boolean;
@@ -121,6 +124,8 @@ function buildOwnerPolicyForm(policy: LockerPolicyDraft): OwnerPolicyForm {
     rivalTribesText: numbersToCsv(policy.rivalTribes),
     friendlyMultiplierBps: policy.friendlyMultiplierBps,
     rivalMultiplierBps: policy.rivalMultiplierBps,
+    marketMode: policy.marketMode,
+    fuelFeeUnits: policy.fuelFeeUnits,
     cooldownMs: policy.cooldownMs,
     strikeScopeId: policy.strikeScopeId,
     useSharedPenalties: policy.useSharedPenalties,
@@ -153,6 +158,8 @@ function buildDraftFromForm(form: OwnerPolicyForm): LockerPolicyDraft {
     rivalTribes: csvToNumbers(form.rivalTribesText),
     friendlyMultiplierBps: Math.max(0, Number(form.friendlyMultiplierBps)),
     rivalMultiplierBps: Math.max(0, Number(form.rivalMultiplierBps)),
+    marketMode: form.marketMode,
+    fuelFeeUnits: Math.max(0, Number(form.fuelFeeUnits)),
     cooldownMs: Math.max(0, Number(form.cooldownMs)),
     strikeScopeId: Math.max(0, Number(form.strikeScopeId)),
     useSharedPenalties: form.useSharedPenalties,
@@ -162,10 +169,21 @@ function buildDraftFromForm(form: OwnerPolicyForm): LockerPolicyDraft {
 }
 
 function buildRiskLabel(policy: LockerPolicyDraft): string {
+  if (policy.marketMode === "procurement") return "Procurement reserve mode";
   if (policy.useSharedPenalties) return "Federated trust network";
   if (policy.rivalMultiplierBps >= 13_000) return "Hostile rival pricing";
   if (policy.friendlyMultiplierBps < 10_000) return "Preferential friendly pricing";
   return "Balanced published pricing";
+}
+
+function marketModeLabel(mode: MarketMode): string {
+  return mode === "procurement" ? "Procurement Market" : "Perpetual Market";
+}
+
+function marketModeCopy(mode: MarketMode): string {
+  return mode === "procurement"
+    ? "Visitor goods go to the owner reserve instead of back onto the public shelf."
+    : "Visitor goods return to the public shelf so later visitors can trade for them.";
 }
 
 function formatCooldownCountdown(
@@ -719,6 +737,14 @@ function App() {
     }
 
     const draft = buildDraftFromForm(ownerPolicyForm);
+    if (draft.fuelFeeUnits > 0) {
+      setActionState({
+        status: "error",
+        label: "Save policy",
+        message: "Fuel fees are still deferred. Set the trade fee to 0 until a real Fuel debit path is proven.",
+      });
+      return;
+    }
     await runWalletAction(
       actor.mode === "local-demo-signer" ? "Save policy (local demo signer)" : "Save policy",
       () =>
@@ -894,15 +920,27 @@ function App() {
   const operatorStateLabel = resolvedSnapshot.policy.isActive ? "Online" : "Offline";
   const compactTradeCopy = resolvedPreview.willStrike
     ? "Underpaying will add a strike and lock this locker temporarily."
-    : "Published terms are satisfied for this exchange.";
+    : resolvedSnapshot.policy.marketMode === "procurement"
+      ? "Accepted goods route to the owner reserve when the trade clears."
+      : "Published terms are satisfied for this exchange.";
   const networkPenaltyCopy =
     resolvedSnapshot.sharedPenalty.pricingPenaltyBps > 0
       ? `Network penalty active: +${(resolvedSnapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(0)}%`
       : "No network penalty";
+  const marketModeSummary = marketModeLabel(resolvedSnapshot.policy.marketMode);
+  const marketModeDescription = marketModeCopy(resolvedSnapshot.policy.marketMode);
+  const fuelFeeCopy =
+    resolvedSnapshot.policy.fuelFeeUnits > 0
+      ? resolvedSnapshot.fuelFeeSupported
+        ? `Trade fee: ${resolvedSnapshot.policy.fuelFeeUnits} Fuel`
+        : `Fuel fee configured: ${resolvedSnapshot.policy.fuelFeeUnits} Fuel (deferred)`
+      : "No Fuel fee";
   const tradeBlockedReason = displayedCooldownActive
     ? `Trading locked while cooldown is active. ${displayedCooldownEndLabel}.`
     : displayedSharedLockoutActive
       ? `Blacklisted by strike network ${resolvedSnapshot.sharedPenalty.policy.scopeId}. ${displayedSharedLockoutLabel}.`
+      : resolvedPreview.fuelFeeBlockedReason
+        ? resolvedPreview.fuelFeeBlockedReason
       : !runtime
         ? "Local runtime context is not loaded yet."
         : resolvedSnapshot.openInventory.length === 0
@@ -1054,6 +1092,10 @@ function App() {
             <strong>{resolvedSnapshot.policy.cooldownMs / 1000}s</strong>
           </div>
           <div>
+            <span>Market mode</span>
+            <strong>{marketModeSummary}</strong>
+          </div>
+          <div>
             <span>Friendly</span>
             <strong>{resolvedSnapshot.policy.friendlyMultiplierBps / 100}%</strong>
           </div>
@@ -1065,11 +1107,17 @@ function App() {
             <span>Shared network</span>
             <strong>{resolvedSnapshot.policy.useSharedPenalties ? `scope ${resolvedSnapshot.policy.strikeScopeId}` : "isolated"}</strong>
           </div>
+          <div>
+            <span>Fuel fee</span>
+            <strong>{resolvedSnapshot.policy.fuelFeeUnits || "off"}</strong>
+          </div>
         </div>
         {!props.compact ? (
           <ul className="policy-list">
             <li>Friendly tribes: {resolvedSnapshot.policy.friendlyTribes.join(", ") || "none"}</li>
             <li>Rival tribes: {resolvedSnapshot.policy.rivalTribes.join(", ") || "none"}</li>
+            <li>Market mode: {marketModeSummary} | {marketModeDescription}</li>
+            <li>{fuelFeeCopy}</li>
             <li>Shared pricing penalty: {(resolvedSnapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(2)}%</li>
             <li>Network state: {resolvedSnapshot.sharedPenalty.policy.isActive ? "active" : "inactive"}</li>
           </ul>
@@ -1084,7 +1132,7 @@ function App() {
     description: string;
     items: LockerDataEnvelope["snapshot"]["openInventory"];
     empty: string;
-    quantityLabel: "open" | "owned";
+    quantityLabel: "open" | "owned" | "reserve";
     compact: boolean;
   }) {
     return (
@@ -1121,6 +1169,10 @@ function App() {
         <StepHeader step={props.step} title="Trade Console" description={props.description} />
         <div className="owner-controls trade-summary-grid">
           <div>
+            <span>Market mode</span>
+            <strong>{marketModeSummary}</strong>
+          </div>
+          <div>
             <span>Detected bucket</span>
             <strong>{resolvedSnapshot.visitor.relationshipBucket}</strong>
           </div>
@@ -1144,8 +1196,12 @@ function App() {
             <span>Network penalty</span>
             <strong>{networkPenaltyCopy}</strong>
           </div>
+          <div>
+            <span>Fuel fee</span>
+            <strong>{fuelFeeCopy}</strong>
+          </div>
         </div>
-        {props.compact ? <p className="trade-copy">{networkPenaltyCopy}</p> : null}
+        {props.compact ? <p className="trade-copy">{marketModeDescription}</p> : null}
         <div className="trade-grid">
           <label>
             Request item
@@ -1237,6 +1293,10 @@ function App() {
               <span>Deficit</span>
               <strong>{resolvedPreview.deficitPoints}</strong>
             </div>
+            <div>
+              <span>Fuel fee</span>
+              <strong>{resolvedPreview.fuelFeeUnits > 0 ? `${resolvedPreview.fuelFeeUnits} Fuel` : "0"}</strong>
+            </div>
             {!props.compact ? (
               <>
                 <div>
@@ -1280,6 +1340,9 @@ function App() {
           <>
             <p className="support-copy">
               Trading uses the visitor path only. The owner does not transfer goods directly; visitors trade against the open shelf inventory inside the unit.
+            </p>
+            <p className="support-copy">
+              {marketModeDescription}
             </p>
             <p className="support-copy">
               Cooldown and shared-network lockout are surfaced separately so the user can tell whether the block is local to this box or persistent across a strike network.
@@ -1420,6 +1483,41 @@ function App() {
                     setOwnerPolicyForm((current) =>
                       current
                         ? { ...current, rivalMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
+                        : current,
+                    )
+                  }
+                />
+              </label>
+              <label>
+                Market mode
+                <select
+                  value={resolvedOwnerPolicyForm.marketMode}
+                  onChange={(event) =>
+                    setOwnerPolicyForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            marketMode: event.target.value === "procurement" ? "procurement" : "perpetual",
+                          }
+                        : current,
+                    )
+                  }
+                >
+                  <option value="perpetual">Perpetual Market</option>
+                  <option value="procurement">Procurement Market</option>
+                </select>
+              </label>
+              <label>
+                Trade fee (Fuel)
+                <input
+                  type="number"
+                  min={0}
+                  disabled
+                  value={resolvedOwnerPolicyForm.fuelFeeUnits}
+                  onChange={(event) =>
+                    setOwnerPolicyForm((current) =>
+                      current
+                        ? { ...current, fuelFeeUnits: Math.max(0, Number(event.target.value) || 0) }
                         : current,
                     )
                   }
@@ -1567,9 +1665,13 @@ function App() {
             <div className="preview-card neutral owner-preview-card">
               <p className="preview-pill">Draft posture</p>
               <p className="preview-detail">
-                {buildRiskLabel(ownerDraft)}. Visitors will see this reflected before they commit a trade.
+                {buildRiskLabel(ownerDraft)}. {marketModeCopy(ownerDraft.marketMode)}
               </p>
               <div className="owner-controls compact">
+                <div>
+                  <span>Market mode</span>
+                  <strong>{marketModeLabel(ownerDraft.marketMode)}</strong>
+                </div>
                 <div>
                   <span>Shared scope</span>
                   <strong>{ownerDraft.useSharedPenalties ? ownerDraft.strikeScopeId : "isolated"}</strong>
@@ -1582,8 +1684,38 @@ function App() {
                   <span>Lockout threshold</span>
                   <strong>{resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}</strong>
                 </div>
+                <div>
+                  <span>Fuel fee</span>
+                  <strong>{ownerDraft.fuelFeeUnits > 0 ? `${ownerDraft.fuelFeeUnits} Fuel` : "deferred"}</strong>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="owner-stage">
+          <p className="preview-pill">{props.compact ? "Reserve" : "Owner reserve"}</p>
+          <p className="preview-detail">
+            Procurement receipts land in the owner inventory inside this same storage unit. Extraction still uses the normal Storage Unit owner flow.
+          </p>
+          <div className="item-table">
+            {resolvedSnapshot.ownerReserveInventory.length === 0 ? (
+              <p className="empty-state">Owner reserve is empty right now.</p>
+            ) : (
+              resolvedSnapshot.ownerReserveInventory.map((item) => (
+                <div key={item.typeId} className="item-row">
+                  <div className="item-main">
+                    <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
+                    <strong>{item.label}</strong>
+                  </div>
+                  <div className="item-meta">
+                    <span>{item.quantity} reserve</span>
+                    <span>{item.points} pts</span>
+                    <span>{formatVolume(item.volumeM3, item.quantity)}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -1624,7 +1756,10 @@ function App() {
               Owner actions use the owner character `{runtime?.ownerCharacterId ?? "n/a"}`. On localnet, this surface can use the local demo signer. Hosted Utopia requires a real wallet path.
             </p>
             <p className="support-copy">
-              Stocking inventory remains outside the owner UI in this phase. Seed open inventory and visitor hold through the operator scripts.
+              Fuel fees are schema-ready but still deferred until a real visitor-side Fuel debit path exists in the world contracts.
+            </p>
+            <p className="support-copy">
+              Stocking inventory remains outside the owner UI in this phase. Seed open inventory and use normal Storage Unit owner inventory flow for reserve collection.
             </p>
           </>
         ) : null}
@@ -1820,6 +1955,15 @@ function App() {
             quantityLabel: "owned",
             compact: false,
           })}
+          {renderInventoryCard({
+            step: "03C",
+            title: "Owner Reserve",
+            description: "Procurement-mode receipts land here inside the same storage unit until the owner extracts or restocks them.",
+            items: resolvedSnapshot.ownerReserveInventory,
+            empty: "No owner reserve entries are available right now.",
+            quantityLabel: "reserve",
+            compact: false,
+          })}
         </div>
         {showVisitorWorkspace
           ? renderTradeCard({
@@ -1899,6 +2043,15 @@ function App() {
         {renderTermsCard({
           step: "2",
           description: "Review the current published terms before you change them.",
+          compact: true,
+        })}
+        {renderInventoryCard({
+          step: "Reserve",
+          title: "Owner Reserve",
+          description: "Procurement receipts accumulate here for later extraction through the standard Storage Unit owner flow.",
+          items: resolvedSnapshot.ownerReserveInventory,
+          empty: "Owner reserve is empty right now.",
+          quantityLabel: "reserve",
           compact: true,
         })}
         {showOwnerWorkspace

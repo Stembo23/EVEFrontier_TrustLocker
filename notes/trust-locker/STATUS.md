@@ -17,6 +17,7 @@
   - in-game integration milestone
   - three-view UI
   - shared strike persistence
+  - owner-incentive market modes and owner reserve semantics
   - dual audit gate
 - The hosted URL contract is documented and aligned to the current hosted-SPA setup:
   - `?view=full` for judge/debug mode
@@ -27,6 +28,10 @@
   - `apps/utopia-smart-assembly/public/_redirects` provides SPA fallback
   - `pnpm deploy:cloudflare:preview` and `pnpm deploy:cloudflare:prod` exist for the primary host
   - Vercel remains optional, not required
+- Fuel-fee support is still a deferred dependency:
+  - the current repo evidence does not prove a visitor-side Fuel debit and owner-controlled credit path
+  - the owner-incentive fallback is the documented `perpetual_market` / `procurement_market` split
+  - procurement mode uses the same storage unit's owner reserve for visitor-offered receipts
 
 ## Implemented
 
@@ -55,6 +60,10 @@
   - opt-in `use_shared_penalties`
   - shared strike-network pricing surcharge
   - shared network lockout across lockers in the same scope
+- Owner incentive mode is documented and staged:
+  - `perpetual_market` preserves the circulation model
+  - `procurement_market` routes receipts into owner reserve
+  - Fuel fees remain deferred unless a real payment path is proven
 - Browser owner flow for shared strike-network policy mutation
 - Browser-side Utopia object-discovery panel that:
   - loads owned objects from a connected wallet
@@ -129,6 +138,7 @@
 ## Remaining Gaps
 
 - Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like visitor/owner information layout, but it still needs a stronger asset/icon pass before calling those views finished.
+- Owner-incentive implementation is still open in code, but the docs now define the intended market-mode split and the Fuel-fee no-go result so the product story stays honest.
 - Hosted deployment and in-game custom URL cutover are documented and ready for a real Utopia storage-unit handoff.
 - Phase 2 audit gate is partially complete:
   - internal review is documented

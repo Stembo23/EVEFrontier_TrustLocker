@@ -6,6 +6,7 @@ export function createDemoSnapshot(): LockerSnapshot {
     lockerName: "Cinder Commons Locker",
     lockerId: "0xTRUSTLOCKERLOCAL",
     trustStatus: DEFAULT_LOCKER_POLICY.isFrozen ? "frozen" : "mutable",
+    fuelFeeSupported: false,
     owner: {
       label: "Cinder Caravan",
       canEditPolicy: !DEFAULT_LOCKER_POLICY.isFrozen,
@@ -42,6 +43,10 @@ export function createDemoSnapshot(): LockerSnapshot {
       { ...findDefaultCatalogEntry(88070), quantity: 5 },
       { ...findDefaultCatalogEntry(1), quantity: 3 },
       { ...findDefaultCatalogEntry(448), quantity: 1 },
+    ],
+    ownerReserveInventory: [
+      { ...findDefaultCatalogEntry(446), quantity: 6 },
+      { ...findDefaultCatalogEntry(449), quantity: 2 },
     ],
     visitorInventory: [
       { ...findDefaultCatalogEntry(88069), quantity: 12 },

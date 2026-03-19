@@ -40,11 +40,17 @@ const EStrikeNetworkMissing: vector<u8> = b"Shared penalties are enabled but the
 const ESharedCooldownActive: vector<u8> = b"Visitor is currently on cooldown for this strike network";
 #[error(code = 15)]
 const EStrikeNetworkThresholdInvalid: vector<u8> = b"Strike network lockout threshold must be greater than zero";
+#[error(code = 16)]
+const EMarketModeInvalid: vector<u8> = b"Market mode must be perpetual or procurement";
+#[error(code = 17)]
+const EFuelFeeNotSupported: vector<u8> = b"Fuel fees are not yet supported by the world contracts";
 
 const RELATION_FRIENDLY: u8 = 0;
 const RELATION_NEUTRAL: u8 = 1;
 const RELATION_RIVAL: u8 = 2;
 const NEUTRAL_MULTIPLIER_BPS: u64 = 10_000;
+const MARKET_MODE_PERPETUAL: u8 = 0;
+const MARKET_MODE_PROCUREMENT: u8 = 1;
 
 public struct PolicyKey has copy, drop, store {
     storage_unit_id: ID,
@@ -95,6 +101,8 @@ public struct LockerPolicy has store, drop {
     rival_tribes: vector<u32>,
     friendly_multiplier_bps: u64,
     rival_multiplier_bps: u64,
+    market_mode: u8,
+    fuel_fee_units: u64,
     strike_scope_id: u64,
     use_shared_penalties: bool,
     cooldown_ms: u64,
@@ -109,6 +117,8 @@ public struct PolicyUpdated has copy, drop {
     rival_tribe_count: u64,
     friendly_multiplier_bps: u64,
     rival_multiplier_bps: u64,
+    market_mode: u8,
+    fuel_fee_units: u64,
     cooldown_ms: u64,
     is_active: bool,
     is_frozen: bool,
@@ -205,6 +215,22 @@ public fun uses_shared_penalties_for_locker(
     };
     let policy = borrow_policy(extension_config, storage_unit_id);
     policy.use_shared_penalties
+}
+
+public fun market_mode_for_locker(extension_config: &ExtensionConfig, storage_unit_id: ID): u8 {
+    if (!has_policy(extension_config, storage_unit_id)) {
+        return MARKET_MODE_PERPETUAL
+    };
+    let policy = borrow_policy(extension_config, storage_unit_id);
+    policy.market_mode
+}
+
+public fun fuel_fee_units_for_locker(extension_config: &ExtensionConfig, storage_unit_id: ID): u64 {
+    if (!has_policy(extension_config, storage_unit_id)) {
+        return 0
+    };
+    let policy = borrow_policy(extension_config, storage_unit_id);
+    policy.fuel_fee_units
 }
 
 public fun has_strike_network(extension_config: &ExtensionConfig, strike_scope_id: u64): bool {
@@ -365,6 +391,8 @@ public fun set_policy(
     rival_tribes: vector<u32>,
     friendly_multiplier_bps: u64,
     rival_multiplier_bps: u64,
+    market_mode: u8,
+    fuel_fee_units: u64,
     strike_scope_id: u64,
     use_shared_penalties: bool,
     cooldown_ms: u64,
@@ -374,6 +402,8 @@ public fun set_policy(
     assert_mutable(storage_unit);
     let accepted_items = build_accepted_items(accepted_type_ids, accepted_points);
     assert_no_tribe_overlap(&friendly_tribes, &rival_tribes);
+    assert_valid_market_mode(market_mode);
+    assert!(fuel_fee_units == 0, EFuelFeeNotSupported);
 
     let locker_id = object::id(storage_unit);
     let penalties = if (config::has_value(extension_config, policy_key(locker_id))) {
@@ -392,6 +422,8 @@ public fun set_policy(
             rival_tribes,
             friendly_multiplier_bps,
             rival_multiplier_bps,
+            market_mode,
+            fuel_fee_units,
             strike_scope_id,
             use_shared_penalties,
             cooldown_ms,
@@ -641,12 +673,25 @@ public fun trade(
             offered_quantity,
             ctx,
         );
-        storage_unit.deposit_to_open_inventory<TrustLockerAuth>(
-            visitor,
-            offered_item,
-            config::x_auth(),
-            ctx,
-        );
+        let market_mode = {
+            let policy = borrow_policy(extension_config, locker_id);
+            policy.market_mode
+        };
+        if (market_mode == MARKET_MODE_PROCUREMENT) {
+            storage_unit.deposit_item<TrustLockerAuth>(
+                visitor,
+                offered_item,
+                config::x_auth(),
+                ctx,
+            );
+        } else {
+            storage_unit.deposit_to_open_inventory<TrustLockerAuth>(
+                visitor,
+                offered_item,
+                config::x_auth(),
+                ctx,
+            );
+        };
     };
 
     if (deficit_points > 0) {
@@ -766,6 +811,13 @@ fun persistent_penalty_key(strike_scope_id: u64, character_id: ID): PersistentPe
 
 fun policy_key(storage_unit_id: ID): PolicyKey {
     PolicyKey { storage_unit_id }
+}
+
+fun assert_valid_market_mode(market_mode: u8) {
+    assert!(
+        market_mode == MARKET_MODE_PERPETUAL || market_mode == MARKET_MODE_PROCUREMENT,
+        EMarketModeInvalid,
+    );
 }
 
 fun has_shared_penalty_state(
@@ -986,6 +1038,8 @@ fun emit_policy_updated(storage_unit: &StorageUnit, policy: &LockerPolicy) {
         rival_tribe_count: vector::length(&policy.rival_tribes),
         friendly_multiplier_bps: policy.friendly_multiplier_bps,
         rival_multiplier_bps: policy.rival_multiplier_bps,
+        market_mode: policy.market_mode,
+        fuel_fee_units: policy.fuel_fee_units,
         strike_scope_id: policy.strike_scope_id,
         use_shared_penalties: policy.use_shared_penalties,
         cooldown_ms: policy.cooldown_ms,

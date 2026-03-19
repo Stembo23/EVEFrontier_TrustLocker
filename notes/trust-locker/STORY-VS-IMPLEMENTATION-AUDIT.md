@@ -24,6 +24,7 @@ Date: 2026-03-17 (America/Los_Angeles)
 - **Frontend now includes a local-only demo signer path** for localnet browser proof, which removes the dependency on a wallet extension supporting custom RPC.
 - **Repo build is clean at head** and the new operator wrappers are working.
 - **Utopia context resolution is proven** through a real public `itemId` and EVE Vault browser pass.
+- **Owner-incentive docs now distinguish** `perpetual_market` from `procurement_market` and explicitly defer Fuel fees until the payment path is proven.
 
 ## What is partially aligned
 
@@ -46,6 +47,9 @@ Date: 2026-03-17 (America/Los_Angeles)
   - penalties now persist across owner-defined strike networks
   - the mechanism is tested
   - a polished live multi-locker UI demo is still optional follow-up work
+- **Fuel-fee owner incentive remains unimplemented**:
+  - the repo does not prove a visitor-side Fuel debit and owner-controlled credit path
+  - the fallback owner motivation model is the documented market split and owner reserve
 - **Dual audit gate** is only partially aligned:
   - internal audit is documented
   - external deterministic Move scan is documented

@@ -14,12 +14,14 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 - [x] Internal audit findings are triaged.
 - [ ] External auditor findings are triaged.
 - [ ] Controlled Utopia storage unit opens the hosted app via `F`.
+- [ ] Owner-incentive documentation is consistent with the Fuel-fee no-go result and the `perpetual_market` / `procurement_market` fallback.
 
 ## Demo Readiness Gate
 
 - [x] `Barter Box` naming is used consistently in demo narration.
 - [ ] v1 boundaries are stated before the demo starts.
 - [ ] v2 deferred items are stated at close (global reputation and final naming pass).
+- [ ] The demo script explicitly says Fuel fees are deferred until a real payment path is proven.
 - [ ] Browser UI can execute owner policy writes and visitor trades without operator script intervention.
   Code path is implemented; the manual run should now use the unsafe local-only demo signer on localnet.
 - [ ] Cooldown countdown updates automatically in the UI during evidence capture.

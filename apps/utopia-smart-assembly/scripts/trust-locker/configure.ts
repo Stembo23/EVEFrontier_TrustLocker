@@ -59,6 +59,9 @@ async function main() {
     const rivalMultiplierBps = Number(
         process.env.LOCKER_RIVAL_MULTIPLIER_BPS ?? deployment.defaults.rivalMultiplierBps
     );
+    const marketMode =
+        process.env.LOCKER_MARKET_MODE === "procurement" ? 1 : 0;
+    const fuelFeeUnits = Number(process.env.LOCKER_FUEL_FEE_UNITS ?? 0);
     const cooldownMs = Number(process.env.LOCKER_COOLDOWN_MS ?? deployment.defaults.cooldownMs);
     const strikeScopeId = Number(process.env.LOCKER_STRIKE_SCOPE_ID ?? 0);
     const useSharedPenalties = boolFromEnv("LOCKER_USE_SHARED_PENALTIES", false);
@@ -74,6 +77,8 @@ async function main() {
         console.log("Rival tribes:", resolvedRivalTribes.join(", "));
         console.log("Friendly multiplier (bps):", friendlyMultiplierBps);
         console.log("Rival multiplier (bps):", rivalMultiplierBps);
+        console.log("Market mode:", marketMode === 1 ? "procurement" : "perpetual");
+        console.log("Fuel fee units:", fuelFeeUnits);
         console.log("Strike scope ID:", strikeScopeId);
         console.log("Use shared penalties:", useSharedPenalties);
         console.log("Cooldown ms:", cooldownMs);
@@ -129,6 +134,8 @@ async function main() {
             ),
             tx.pure.u64(BigInt(friendlyMultiplierBps)),
             tx.pure.u64(BigInt(rivalMultiplierBps)),
+            tx.pure.u8(marketMode),
+            tx.pure.u64(BigInt(fuelFeeUnits)),
             tx.pure.u64(BigInt(strikeScopeId)),
             tx.pure(bcs.bool().serialize(useSharedPenalties).toBytes()),
             tx.pure.u64(BigInt(cooldownMs)),

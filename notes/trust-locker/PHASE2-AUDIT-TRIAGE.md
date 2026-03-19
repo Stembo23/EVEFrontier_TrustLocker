@@ -13,6 +13,7 @@ This is the short version for orchestration.
 
 - **Medium:** Capture a polished multi-locker shared-network demo in the browser if we want stronger presentation proof beyond tests.
 - **Low:** Continue the visitor and owner visual polish pass.
+- **Low:** Keep the owner-incentive documentation aligned with the Fuel-fee no-go result and the `perpetual_market` / `procurement_market` fallback.
 
 ## Lower Priority
 
@@ -25,6 +26,8 @@ This is the short version for orchestration.
 - External auditor Move scan: 0 findings, but the prover stage failed and the run is not a final signoff.
 - External auditor offchain scan: not available from the current CLI because it expects a `Move.toml`.
 - Utopia read-only context: validated separately, but it is not a Barter Box deployment proof.
+- Fuel fee: deferred unless a real visitor-side Fuel debit/credit path is proven.
+- Procurement fallback: same storage unit owner reserve, not a simulated offchain skim.
 
 ## Orchestrator Actions
 

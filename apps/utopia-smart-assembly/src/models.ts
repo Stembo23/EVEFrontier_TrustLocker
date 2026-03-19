@@ -63,10 +63,12 @@ export type LockerSnapshot = {
   lockerName: string;
   lockerId: string;
   trustStatus: LockerTrustStatus;
+  fuelFeeSupported: boolean;
   owner: OwnerState;
   visitor: VisitorState;
   sharedPenalty: SharedPenaltyState;
   openInventory: Array<CatalogItem & { quantity: number }>;
+  ownerReserveInventory: Array<CatalogItem & { quantity: number }>;
   visitorInventory: Array<CatalogItem & { quantity: number }>;
   policy: LockerPolicyDraft;
   recentSignals: LockerRecentSignal[];
@@ -88,6 +90,9 @@ export type TradePreview = {
   sharedPenaltyScopeId: number;
   sharedPenaltyLockoutActive: boolean;
   sharedPenaltyLockoutLabel: string;
+  fuelFeeUnits: number;
+  fuelFeeRequired: boolean;
+  fuelFeeBlockedReason: string | null;
   willStrike: boolean;
 };
 

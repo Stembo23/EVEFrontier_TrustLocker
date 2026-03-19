@@ -56,6 +56,8 @@ const SHARED_PRICING_PENALTY_BPS: u64 = 500;
 const SHARED_MAX_PRICING_PENALTY_BPS: u64 = 5000;
 const SHARED_LOCKOUT_THRESHOLD: u64 = 3;
 const SHARED_LOCKOUT_DURATION_MS: u64 = 300_000;
+const MARKET_MODE_PERPETUAL: u8 = 0;
+const MARKET_MODE_PROCUREMENT: u8 = 1;
 
 fun publish_config(ts: &mut ts::Scenario): ID {
     ts::next_tx(ts, admin());
@@ -291,6 +293,8 @@ fun authorize_and_configure_locker(
         storage_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         vector[],
         vector[RIVAL_TRIBE],
     )
@@ -301,6 +305,8 @@ fun authorize_and_configure_locker_with_relationships(
     storage_id: ID,
     owner_character_id: ID,
     config_id: ID,
+    market_mode: u8,
+    fuel_fee_units: u64,
     friendly_tribes: vector<u32>,
     rival_tribes: vector<u32>,
 ) {
@@ -324,6 +330,8 @@ fun authorize_and_configure_locker_with_relationships(
             rival_tribes,
             FRIENDLY_MULTIPLIER_BPS,
             RIVAL_MULTIPLIER_BPS,
+            market_mode,
+            fuel_fee_units,
             0,
             false,
             COOLDOWN_MS,
@@ -341,6 +349,8 @@ fun authorize_and_configure_locker_with_shared_network(
     storage_id: ID,
     owner_character_id: ID,
     config_id: ID,
+    market_mode: u8,
+    fuel_fee_units: u64,
     strike_scope_id: u64,
     use_shared_penalties: bool,
     friendly_tribes: vector<u32>,
@@ -366,6 +376,8 @@ fun authorize_and_configure_locker_with_shared_network(
             rival_tribes,
             FRIENDLY_MULTIPLIER_BPS,
             RIVAL_MULTIPLIER_BPS,
+            market_mode,
+            fuel_fee_units,
             strike_scope_id,
             use_shared_penalties,
             COOLDOWN_MS,
@@ -484,6 +496,14 @@ fun test_policy_creation_and_update() {
         assert_eq!(
             trust_locker::accepted_points_for_type(&extension_config, storage_id, LENS_TYPE_ID),
             3,
+        );
+        assert_eq!(
+            trust_locker::market_mode_for_locker(&extension_config, storage_id),
+            MARKET_MODE_PERPETUAL,
+        );
+        assert_eq!(
+            trust_locker::fuel_fee_units_for_locker(&extension_config, storage_id),
+            0,
         );
         ts::return_shared(extension_config);
     };
@@ -740,6 +760,8 @@ fun test_quote_requested_points_friendly_vs_rival() {
         storage_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         vector[DEFAULT_TRIBE],
         vector[RIVAL_TRIBE],
     );
@@ -791,6 +813,8 @@ fun test_shared_penalty_increases_quote_across_lockers() {
         storage_a_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_A,
         true,
         vector[],
@@ -801,6 +825,8 @@ fun test_shared_penalty_increases_quote_across_lockers() {
         storage_b_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_A,
         true,
         vector[],
@@ -877,6 +903,8 @@ fun test_shared_lockout_blocks_other_locker_in_same_scope() {
         storage_a_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_B,
         true,
         vector[],
@@ -887,6 +915,8 @@ fun test_shared_lockout_blocks_other_locker_in_same_scope() {
         storage_b_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_B,
         true,
         vector[],
@@ -972,6 +1002,8 @@ fun test_different_shared_scopes_do_not_share_strikes() {
         storage_a_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_A,
         true,
         vector[],
@@ -982,6 +1014,8 @@ fun test_different_shared_scopes_do_not_share_strikes() {
         storage_b_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_B,
         true,
         vector[],
@@ -1071,6 +1105,8 @@ fun test_shared_penalties_can_be_disabled_per_locker() {
         storage_a_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_A,
         true,
         vector[],
@@ -1081,6 +1117,8 @@ fun test_shared_penalties_can_be_disabled_per_locker() {
         storage_b_id,
         owner_character_id,
         config_id,
+        MARKET_MODE_PERPETUAL,
+        0,
         SHARED_SCOPE_A,
         false,
         vector[],
@@ -1150,6 +1188,87 @@ fun test_shared_penalties_can_be_disabled_per_locker() {
 }
 
 #[test]
+fun test_procurement_market_routes_offered_items_to_owner_reserve() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let visitor_character_id = create_character(&mut ts, user_a(), CHARACTER_A_ITEM_ID);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 15);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_lens_to_storage_unit(&mut ts, storage_id, owner_character_id, user_b());
+    mint_ammo<Character>(&mut ts, storage_id, visitor_character_id, user_a());
+    authorize_and_configure_locker_with_relationships(
+        &mut ts,
+        storage_id,
+        owner_character_id,
+        config_id,
+        MARKET_MODE_PROCUREMENT,
+        0,
+        vector[],
+        vector[RIVAL_TRIBE],
+    );
+    seed_locker_open_inventory(&mut ts, storage_id, owner_character_id);
+
+    let visitor_cap_id = character_owner_cap_id(&mut ts, visitor_character_id);
+    let (locker_open_key, locker_owner_key) = {
+        ts::next_tx(&mut ts, admin());
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let open_key = storage_unit.open_storage_key();
+        let owner_key = storage_unit.owner_cap_id();
+        ts::return_shared(storage_unit);
+        (open_key, owner_key)
+    };
+
+    let trade_clock = clock::create_for_testing(ts.ctx());
+    ts::next_tx(&mut ts, user_a());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut visitor = ts::take_shared_by_id<Character>(&ts, visitor_character_id);
+        let (visitor_cap, visitor_receipt) = visitor.borrow_owner_cap<Character>(
+            ts::most_recent_receiving_ticket<OwnerCap<Character>>(&visitor_character_id),
+            ts.ctx(),
+        );
+        let mut extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::trade(
+            &mut storage_unit,
+            &visitor,
+            &visitor_cap,
+            &mut extension_config,
+            &trade_clock,
+            LENS_TYPE_ID,
+            LENS_QUANTITY,
+            AMMO_TYPE_ID,
+            AMMO_QUANTITY,
+            ts.ctx(),
+        );
+        visitor.return_owner_cap(visitor_cap, visitor_receipt);
+        ts::return_shared(extension_config);
+        ts::return_shared(visitor);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, admin());
+    {
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        assert_eq!(
+            storage_unit::item_quantity(&storage_unit, visitor_cap_id, LENS_TYPE_ID),
+            LENS_QUANTITY,
+        );
+        assert!(!storage_unit::contains_item(&storage_unit, locker_open_key, AMMO_TYPE_ID));
+        assert_eq!(
+            storage_unit::item_quantity(&storage_unit, locker_owner_key, AMMO_TYPE_ID),
+            AMMO_QUANTITY,
+        );
+        ts::return_shared(storage_unit);
+    };
+
+    trade_clock.destroy_for_testing();
+    ts::end(ts);
+}
+
+#[test]
 #[expected_failure(abort_code = trust_locker::EFriendlyRivalOverlap)]
 fun test_set_policy_rejects_friendly_rival_overlap() {
     let mut ts = ts::begin(governor());
@@ -1177,6 +1296,53 @@ fun test_set_policy_rejects_friendly_rival_overlap() {
             vector[DEFAULT_TRIBE],
             FRIENDLY_MULTIPLIER_BPS,
             RIVAL_MULTIPLIER_BPS,
+            MARKET_MODE_PERPETUAL,
+            0,
+            0,
+            false,
+            COOLDOWN_MS,
+            true,
+        );
+        owner_character.return_owner_cap(storage_cap, receipt);
+        ts::return_shared(extension_config);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::end(ts);
+}
+
+#[test]
+#[expected_failure(abort_code = trust_locker::EFuelFeeNotSupported)]
+fun test_set_policy_rejects_nonzero_fuel_fee_until_supported() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, _nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 16);
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        storage_unit.authorize_extension<config::TrustLockerAuth>(&storage_cap);
+        let mut extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::set_policy(
+            &storage_unit,
+            &storage_cap,
+            &mut extension_config,
+            vector[LENS_TYPE_ID, AMMO_TYPE_ID],
+            vector[2, 1],
+            vector[],
+            vector[RIVAL_TRIBE],
+            FRIENDLY_MULTIPLIER_BPS,
+            RIVAL_MULTIPLIER_BPS,
+            MARKET_MODE_PERPETUAL,
+            1,
             0,
             false,
             COOLDOWN_MS,

@@ -23,6 +23,8 @@ type PolicyField = {
     rival_tribes?: number[];
     friendly_multiplier_bps?: string | number;
     rival_multiplier_bps?: string | number;
+    market_mode?: string | number;
+    fuel_fee_units?: string | number;
     strike_scope_id?: string | number;
     use_shared_penalties?: boolean;
     cooldown_ms?: string | number;
@@ -183,6 +185,8 @@ async function inspect() {
         ],
     });
     const strikeScopeId = toNumber(policy.strike_scope_id);
+    const marketMode = toNumber(policy.market_mode);
+    const fuelFeeUnits = toNumber(policy.fuel_fee_units);
     const sharedStrikeBytes =
         strikeScopeId > 0
             ? await devInspectMoveCallFirstReturnValueBytes(client, {
@@ -243,6 +247,8 @@ async function inspect() {
     console.log("Rival tribes:", JSON.stringify(policy.rival_tribes ?? []));
     console.log("Friendly multiplier bps:", toNumber(policy.friendly_multiplier_bps));
     console.log("Rival multiplier bps:", toNumber(policy.rival_multiplier_bps));
+    console.log("Market mode:", marketMode === 1 ? "procurement" : "perpetual");
+    console.log("Fuel fee units:", fuelFeeUnits);
     console.log("Strike scope ID:", strikeScopeId);
     console.log("Use shared penalties:", policy.use_shared_penalties ? "yes" : "no");
     console.log("Cooldown ms:", toNumber(policy.cooldown_ms));

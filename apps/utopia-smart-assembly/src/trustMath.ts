@@ -41,6 +41,11 @@ export function quoteTradePreview(args: {
   const offeredPoints = args.offeredItem.points * args.offeredQuantity;
   const deficitPoints = Math.max(0, effectiveRequestedPoints - offeredPoints);
   const pricingMultiplierBps = multiplierForBucket(args.policy, args.relationshipBucket);
+  const fuelFeeUnits = Math.max(0, args.policy.fuelFeeUnits ?? 0);
+  const fuelFeeRequired = fuelFeeUnits > 0;
+  const fuelFeeBlockedReason = fuelFeeRequired
+    ? "Fuel fees are configured but platform support is still deferred."
+    : null;
 
   return {
     requestedItem: args.requestedItem,
@@ -60,6 +65,9 @@ export function quoteTradePreview(args: {
     sharedPenaltyScopeId: args.sharedPenalty.policy.scopeId,
     sharedPenaltyLockoutActive: args.sharedPenalty.lockoutActive,
     sharedPenaltyLockoutLabel: args.sharedPenalty.lockoutEndLabel,
+    fuelFeeUnits,
+    fuelFeeRequired,
+    fuelFeeBlockedReason,
     willStrike: deficitPoints > 0,
   };
 }

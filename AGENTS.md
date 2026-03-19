@@ -8,6 +8,9 @@ Phase 2 extends the MVP into:
 - a hosted in-world assembly dApp that opens in the in-game browser when players press `F`
 - a three-view UI (`full`, `owner`, and `visitor`)
 - shared strike persistence across owner-defined Barter Box networks
+- an owner-incentive model with `perpetual_market` and `procurement_market`
+- a same-storage-unit owner reserve for procurement-mode receipts
+- a Fuel-fee feasibility spike, with Fuel fees deferred unless a real visitor-side debit/credit path is proven
 - Utopia public hardening, then owned-Utopia cutover, then post-cutover hardening
 - a dual audit gate before Phase 2 is considered complete
 
@@ -16,6 +19,7 @@ Phase 2 extends the MVP into:
 - `locker`: a storage unit running the Barter Box extension
 - `open inventory`: the public shelf inventory for the locker
 - `owned inventory`: a visitor-specific inventory inside the same storage unit
+- `owner reserve`: the owner inventory slot inside the same storage unit used for procurement-mode receipts
 - `points`: the owner-defined fairness score assigned per accepted `type_id`
 - `strike`: the on-chain penalty record created by an underpaying trade
 - `cooldown`: the period during which a visitor cannot trade with the same locker again
@@ -23,6 +27,8 @@ Phase 2 extends the MVP into:
 - `freeze`: the irreversible storage-unit extension freeze that locks locker policy edits
 - `strike network`: an owner-defined trust federation across multiple lockers
 - `shared penalty`: strike-derived pricing or lockout effects that follow a character across lockers in the same strike network
+- `market mode`: owner-selected trade behavior, either `perpetual_market` or `procurement_market`
+- `Fuel fee`: a future trade fee that remains deferred until a real visitor-side Fuel debit and owner-controlled credit path is proven
 
 ## Phase 2 Boundaries
 
@@ -35,6 +41,8 @@ Phase 2 extends the MVP into:
 - Utopia in-game cutover only after the hosted app is validated on a controlled assembly
 - Owned-Utopia cutover is the final live deployment milestone
 - Shared strike persistence is owner-defined by strike network, not world-global
+- Fuel-fee support is deferred until proven by the world contracts and runtime
+- Procurement mode routes visitor-offered goods into the same storage unit's owner reserve
 
 ## No-Scope-Creep Rules
 
@@ -45,6 +53,7 @@ Phase 2 extends the MVP into:
 - No hidden or mutable trade math after a locker has been frozen
 - No world-global reputation propagation
 - No separate native-client-only UI implementation; in-game uses the same hosted web app
+- No simulated Fuel fee or fake currency skim while the feasibility spike is unresolved
 
 ## Lane Ownership
 
@@ -64,12 +73,14 @@ Phase 2 extends the MVP into:
 - Owns `apps/utopia-smart-assembly/scripts`
 - Publishes the package, configures lockers, seeds inventory, and prints discovered IDs
 - Owns hosting/deployment glue for public URLs and in-game cutover checklists
+- Owns documentation and checklists for owner-incentive mode rollout and the Fuel-fee feasibility result
 - Must consume published Move interfaces rather than re-defining them
 
 ### Frontend / dApp Lane
 
 - Owns `apps/utopia-smart-assembly/src`
 - Shows locker trust state, policy, trade preview, owner configuration flows, and shared penalty state in the browser dApp
+- Shows market mode and owner-reserve state in the browser dApp
 - Must support browser-side owner policy writes and visitor trade execution in the submission path
 - Must support both:
   - `view=full`
@@ -98,6 +109,7 @@ Phase 2 extends the MVP into:
   - trade events
   - strike and cooldown events
 - Shared penalty math is still on-chain truth. Frontend/script code may only mirror it for preview.
+- The owner-incentive model should mirror on-chain market mode and reserve semantics in the UI, but must not invent a Fuel fee if the feasibility spike remains a no-go.
 - Scripts and dApp code may add local display metadata, but must not redefine trade math
 - Human-readable item labels and icons belong in frontend/script config, not on-chain
 

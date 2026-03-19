@@ -4,7 +4,7 @@ import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { deriveObjectID } from "@mysten/sui/utils";
-import type { CatalogItem, LockerPolicyDraft } from "../trust-locker.config";
+import type { CatalogItem, LockerPolicyDraft, MarketMode } from "../trust-locker.config";
 import deployment from "../deployments/localnet/trust-locker.json";
 import { TRUST_LOCKER_CATALOG } from "../trust-locker.config";
 import { createDemoSnapshot } from "./demoData";
@@ -34,6 +34,8 @@ type PolicyField = {
   rival_tribes?: Array<string | number>;
   friendly_multiplier_bps?: string | number;
   rival_multiplier_bps?: string | number;
+  market_mode?: string | number;
+  fuel_fee_units?: string | number;
   strike_scope_id?: string | number;
   use_shared_penalties?: boolean;
   cooldown_ms?: string | number;
@@ -69,6 +71,19 @@ const StrikeNetworkPolicyBcs = bcs.struct("StrikeNetworkPolicy", {
   network_lockout_duration_ms: bcs.u64(),
   is_active: bcs.bool(),
 });
+
+const MOVE_MARKET_MODE_PERPETUAL = 0;
+const MOVE_MARKET_MODE_PROCUREMENT = 1;
+
+function parseMarketMode(value: string | number | undefined): MarketMode {
+  return toNumber(value, MOVE_MARKET_MODE_PERPETUAL) === MOVE_MARKET_MODE_PROCUREMENT
+    ? "procurement"
+    : "perpetual";
+}
+
+function encodeMarketMode(mode: MarketMode): number {
+  return mode === "procurement" ? MOVE_MARKET_MODE_PROCUREMENT : MOVE_MARKET_MODE_PERPETUAL;
+}
 
 function createLocalnetClient(metadata: DeploymentMetadata): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url: metadata.rpcUrl, network: "localnet" });
@@ -295,17 +310,21 @@ function buildBaseSnapshot(metadata: DeploymentMetadata): LockerSnapshot {
         lastLockerId: buildRuntimeContext(metadata).lockerId,
       },
       pricingPenaltyBps: 0,
-      lockoutActive: false,
-      lockoutEndLabel: "No network lockout",
+    lockoutActive: false,
+    lockoutEndLabel: "No network lockout",
     },
     openInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
+    ownerReserveInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     visitorInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
+    fuelFeeSupported: false,
     policy: {
       acceptedItems: policyItems,
       friendlyTribes: metadata.defaults.friendlyTribes,
       rivalTribes: metadata.defaults.rivalTribes,
       friendlyMultiplierBps: metadata.defaults.friendlyMultiplierBps,
       rivalMultiplierBps: metadata.defaults.rivalMultiplierBps,
+      marketMode: "perpetual",
+      fuelFeeUnits: 0,
       cooldownMs: metadata.defaults.cooldownMs,
       strikeScopeId: 0,
       useSharedPenalties: false,
@@ -509,6 +528,8 @@ function buildPolicyDraft(policy: PolicyField | null, metadata: DeploymentMetada
     rivalTribes: toNumberArray(policy.rival_tribes),
     friendlyMultiplierBps: toNumber(policy.friendly_multiplier_bps, metadata.defaults.friendlyMultiplierBps),
     rivalMultiplierBps: toNumber(policy.rival_multiplier_bps, metadata.defaults.rivalMultiplierBps),
+    marketMode: parseMarketMode(policy.market_mode),
+    fuelFeeUnits: toNumber(policy.fuel_fee_units, 0),
     cooldownMs: toNumber(policy.cooldown_ms, metadata.defaults.cooldownMs),
     strikeScopeId: toNumber(policy.strike_scope_id, 0),
     useSharedPenalties: Boolean(policy.use_shared_penalties),
@@ -545,6 +566,7 @@ async function tryLoadLocalnetSnapshot(
     cooldownBytes,
     visitorTribeBytes,
     openStorageKeyBytes,
+    storageOwnerCapBytes,
     visitorOwnerCapBytes,
     recentSignals,
   ] = await Promise.all([
@@ -590,6 +612,12 @@ async function tryLoadLocalnetSnapshot(
     devInspectBytes(
       client,
       walletSender,
+      `${runtime.worldPackageId}::storage_unit::owner_cap_id`,
+      (tx) => [tx.object(runtime.lockerId)],
+    ),
+    devInspectBytes(
+      client,
+      walletSender,
       `${runtime.worldPackageId}::character::owner_cap_id`,
       (tx) => [tx.object(runtime.visitorCharacterId)],
     ),
@@ -597,10 +625,12 @@ async function tryLoadLocalnetSnapshot(
   ]);
 
   const openStorageKey = openStorageKeyBytes ? bcs.Address.parse(openStorageKeyBytes) : null;
+  const storageOwnerCapId = storageOwnerCapBytes ? bcs.Address.parse(storageOwnerCapBytes) : null;
   const visitorOwnerCapId = visitorOwnerCapBytes ? bcs.Address.parse(visitorOwnerCapBytes) : null;
 
-  const [openInventoryEntries, visitorInventoryEntries] = await Promise.all([
+  const [openInventoryEntries, ownerReserveEntries, visitorInventoryEntries] = await Promise.all([
     openStorageKey ? loadInventoryEntries(client, runtime.lockerId, openStorageKey) : Promise.resolve([]),
+    storageOwnerCapId ? loadInventoryEntries(client, runtime.lockerId, storageOwnerCapId) : Promise.resolve([]),
     visitorOwnerCapId ? loadInventoryEntries(client, runtime.lockerId, visitorOwnerCapId) : Promise.resolve([]),
   ]);
 
@@ -669,6 +699,7 @@ async function tryLoadLocalnetSnapshot(
     lockerName: "Localnet Barter Box",
     lockerId: runtime.lockerId,
     trustStatus: isFrozen ? "frozen" : "mutable",
+    fuelFeeSupported: false,
     owner: {
       label: `${metadata.defaults.ownerCharacterItemId} owner`,
       canEditPolicy: !isFrozen,
@@ -721,6 +752,7 @@ async function tryLoadLocalnetSnapshot(
       lockoutEndLabel: formatCooldownLabel(sharedCooldownEndTimestampMs),
     },
     openInventory: materializeInventory(openInventoryEntries, policyDraft),
+    ownerReserveInventory: materializeInventory(ownerReserveEntries, policyDraft),
     visitorInventory: materializeInventory(visitorInventoryEntries, policyDraft),
     policy: {
       ...policyDraft,
@@ -737,6 +769,12 @@ async function tryLoadLocalnetSnapshot(
   }
   if (snapshot.visitorInventory.length === 0) {
     notes.push("Visitor owned inventory is currently empty or unavailable from the live locker state.");
+  }
+  if (snapshot.policy.fuelFeeUnits > 0 && !snapshot.fuelFeeSupported) {
+    notes.push("Fuel fee is configured in policy draft terms, but real Fuel charging is deferred pending world-contract support.");
+  }
+  if (snapshot.policy.marketMode === "procurement") {
+    notes.push("Procurement mode routes visitor-offered goods into the owner's reserve inventory inside the same unit.");
   }
 
   return { snapshot, notes, runtime };
@@ -910,6 +948,8 @@ export async function updateLockerPolicy(args: {
       tx.pure(bcs.vector(bcs.u32()).serialize(vectors.rivalTribes).toBytes()),
       tx.pure.u64(BigInt(args.draft.friendlyMultiplierBps)),
       tx.pure.u64(BigInt(args.draft.rivalMultiplierBps)),
+      tx.pure.u8(encodeMarketMode(args.draft.marketMode)),
+      tx.pure.u64(BigInt(args.draft.fuelFeeUnits)),
       tx.pure.u64(BigInt(args.draft.strikeScopeId)),
       tx.pure(bcs.bool().serialize(args.draft.useSharedPenalties).toBytes()),
       tx.pure.u64(BigInt(args.draft.cooldownMs)),

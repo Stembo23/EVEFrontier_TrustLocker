@@ -30,10 +30,15 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
   - Utopia public hardening
   - owned Utopia cutover last
 - Use [`notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md) as the source of truth for the in-game hosting and cutover checklist.
+- Use [`notes/trust-locker/FUEL-FEE-FEASIBILITY.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/FUEL-FEE-FEASIBILITY.md) as the source of truth for the owner-incentive Fuel decision.
 - Keep the package compatible with Utopia and EVE Vault-style browser flows
 - Treat owned Utopia in-game deployment as a late-stage milestone, not an assumption
 - For localnet browser proof, use the built-in unsafe local-only demo signer instead of chasing wallet-extension custom-RPC support
 - For Utopia browser proof, use a real wallet connection such as EVE Vault
+- Treat the owner-incentive model as documented and staged:
+  - `perpetual_market` is the circulation/storefront model
+  - `procurement_market` routes visitor receipts into the same storage unit's owner reserve
+  - Fuel fees remain deferred unless a real visitor-side debit and owner-controlled credit path is proven
 - Run a dual audit gate before calling Phase 2 complete
 - Treat the final owner and visitor UI passes as a work in progress, not a finished visual pass
 
@@ -53,6 +58,7 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
   - `view=visitor` hides local-only and proof-only tools
 - `tenant` and `itemId` are the world-context inputs from EVE Frontier or the external-browser URL.
 - The local demo signer is intentionally localnet-only and must not be treated as a hosted Utopia assumption.
+- The owner-incentive docs should never imply a live Fuel fee unless the world contracts prove the payment path; keep that claim deferred for now.
 
 ### Hosted URL contract
 
@@ -91,6 +97,10 @@ Barter Box turns a Storage Unit into a programmable social market:
 - visitors can still underpay
 - underpaying creates a strike and cooldown instead of blocking the trade
 - owners can freeze the locker policy to build public trust
+- the owner-incentive model is split into:
+  - `perpetual_market` for ongoing shelf circulation
+  - `procurement_market` for owner reserve accumulation inside the same storage unit
+  - Fuel fees deferred until proven
 - the browser dApp presents the assembly context, trust state, policy, and trade preview in a Frontier-style flow
 - the browser dApp now resolves live localnet policy, inventory, and signal data
 - owner policy mutation/freeze and visitor trade execution are implemented in-browser
@@ -103,6 +113,7 @@ Barter Box turns a Storage Unit into a programmable social market:
   - `Visitor` mode for player-facing assembly interaction
 - the visitor mode is intentionally transaction-first and omits owner governance by default; owner controls live in `view=owner`
 - the final owner and visitor UI polish is still in progress
+- the owner-incentive story is documented first, implemented later; do not narrate Fuel fees as live without the missing debit/credit proof
 - the same hosted app will serve standalone browser and in-game browser contexts via the shared `tenant` + `itemId` + `view` URL contract
 - Cloudflare Pages is the primary hosted path, with Vercel kept as a fallback
 

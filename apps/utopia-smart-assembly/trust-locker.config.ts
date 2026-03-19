@@ -9,6 +9,7 @@ export type CatalogItem = {
 
 export const PRODUCT_WORKING_NAME = "Barter Box";
 export const LOCALNET_DEPLOYMENT_METADATA_URL = "/deployments/localnet/trust-locker.json";
+export type MarketMode = "perpetual" | "procurement";
 
 export type LockerPolicyDraft = {
   acceptedItems: CatalogItem[];
@@ -16,6 +17,8 @@ export type LockerPolicyDraft = {
   rivalTribes: number[];
   friendlyMultiplierBps: number;
   rivalMultiplierBps: number;
+  marketMode: MarketMode;
+  fuelFeeUnits: number;
   cooldownMs: number;
   strikeScopeId: number;
   useSharedPenalties: boolean;
@@ -40,6 +43,8 @@ export const DEFAULT_LOCKER_POLICY: LockerPolicyDraft = {
   rivalTribes: [200],
   friendlyMultiplierBps: 9000,
   rivalMultiplierBps: 15000,
+  marketMode: "perpetual",
+  fuelFeeUnits: 0,
   cooldownMs: 60_000,
   strikeScopeId: 0,
   useSharedPenalties: false,

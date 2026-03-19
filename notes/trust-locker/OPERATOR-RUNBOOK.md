@@ -15,6 +15,10 @@ This is the authoritative local/demo sequence for Barter Box. Use it as the sour
   - paste owner key into the `Owner signer secret` field
   - paste visitor key into the `Visitor signer secret` field
   - save them to browser session storage
+- The owner-incentive fallback is documented, not live:
+  - `perpetual_market` is the public circulation model
+  - `procurement_market` routes receipts into the same storage unit's owner reserve
+  - Fuel fees remain deferred until a real payment path is proven
 - Do not use EVE Vault for the localnet proof. Reserve EVE Vault for Utopia validation.
 - The hosted deployment path is static and Cloudflare Pages-based:
   - `pnpm deploy:cloudflare:preview` for preview hosting
@@ -84,6 +88,7 @@ Use this only when you need the granular commands behind `prepare` and `verify`.
   - `Barter Box` is the product name
   - global player reputation is deferred to v2
   - Utopia live writes are stretch, not baseline
+  - Fuel fees are deferred until a real visitor-side payment path is proven
 
 ## Utopia Read-Only Validation
 
@@ -107,6 +112,10 @@ Use this only when you are ready to point a real storage unit at the hosted app.
 7. Open the unit in-game with `F`.
 8. Confirm the hosted app loads in the in-game browser with the expected `itemId` and `view=visitor`.
 9. Capture the final hosted URL, unit identity, and screenshot proof.
+10. If you narrate the owner-incentive model, keep the distinction explicit:
+   - `perpetual_market` = ongoing circulation/storefront
+   - `procurement_market` = owner reserve in the same storage unit
+   - Fuel fee = deferred unless proven
 
 ### Deployment Commands
 
