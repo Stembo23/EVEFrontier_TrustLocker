@@ -21,7 +21,7 @@ function main() {
   const deploymentPath = getTrustLockerDeploymentPath(network);
   const deployment = readJsonIfPresent(deploymentPath) as DeploymentSummary | null;
 
-  console.log("Trust Locker context");
+  console.log("Barter Box context");
   console.log("====================");
   console.log(`Workspace: ${root}`);
   console.log(`Network: ${network}`);
@@ -35,13 +35,13 @@ function main() {
     console.log("Discovered deployment");
     console.log("---------------------");
     console.log(`Network: ${deployment.network ?? "unknown"}`);
-    console.log(`Trust Locker Package ID: ${deployment.trustLocker?.packageId ?? "missing"}`);
+    console.log(`Barter Box Package ID: ${deployment.trustLocker?.packageId ?? "missing"}`);
     console.log(`Extension Config ID: ${deployment.trustLocker?.extensionConfigId ?? "missing"}`);
   } else {
     console.log("");
     console.log("Next step");
     console.log("---------");
-    console.log("Publish the Trust Locker package locally, then write deployments/localnet/trust-locker.json.");
+    console.log("Publish the Barter Box package locally, then write deployments/localnet/trust-locker.json.");
   }
 }
 

@@ -247,7 +247,7 @@ export function readTrustLockerDeployment(network: Network): TrustLockerDeployme
     const filePath = getTrustLockerDeploymentPath(network);
     if (!fs.existsSync(filePath)) {
         throw new Error(
-            `Trust Locker deployment metadata not found at ${filePath}. Run publish first.`
+            `Barter Box deployment metadata not found at ${filePath}. Run publish first.`
         );
     }
     return parseJsonFile<TrustLockerDeployment>(filePath);

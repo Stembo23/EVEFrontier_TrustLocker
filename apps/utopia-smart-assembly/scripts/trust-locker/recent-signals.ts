@@ -41,7 +41,7 @@ function summarizeParsedJson(parsedJson: Record<string, unknown> | undefined): s
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Trust Locker Recent Signals (${network})`);
+    logHeading(`Barter Box Recent Signals (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const client = createClient(network);
@@ -70,6 +70,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error("Failed to read Trust Locker recent signals:", error);
+    console.error("Failed to read Barter Box recent signals:", error);
     process.exit(1);
 });

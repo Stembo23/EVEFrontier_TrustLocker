@@ -15,7 +15,7 @@ import {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Seed Trust Locker Visitor Inventory (${network})`);
+    logHeading(`Seed Barter Box Visitor Inventory (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);

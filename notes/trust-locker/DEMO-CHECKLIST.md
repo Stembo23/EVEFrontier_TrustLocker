@@ -1,4 +1,4 @@
-# Trust Locker MVP Demo Checklist
+# Barter Box MVP Demo Checklist
 
 This checklist is for the localnet-first demo run before Utopia public hardening and owned cutover.
 
@@ -16,7 +16,7 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 
 ## Demo Readiness Gate
 
-- [ ] `Trust Locker` naming is presented as a working title in demo narration.
+- [x] `Barter Box` naming is used consistently in demo narration.
 - [ ] v1 boundaries are stated before the demo starts.
 - [ ] v2 deferred items are stated at close (global reputation and final naming pass).
 - [ ] Browser UI can execute owner policy writes and visitor trades without operator script intervention.
@@ -27,7 +27,7 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 ## Environment Readiness
 
 - [x] Local world is deployed and configured.
-- [x] Trust Locker package is published.
+- [x] Barter Box package is published.
 - [x] Deployment metadata exists at `apps/utopia-smart-assembly/deployments/localnet/trust-locker.json`.
 - [x] Demo identities are prepared: owner character + visitor character(s).
 - [x] Locker assembly is online and extension-authorized.

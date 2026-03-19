@@ -1,6 +1,6 @@
-# EVE Frontier Trust Locker
+# EVE Frontier Barter Box
 
-Trust Locker is a programmable Smart Storage Unit extension for EVE Frontier.
+Barter Box is a programmable Smart Storage Unit extension for EVE Frontier.
 
 It turns a storage unit into a player-run social market:
 
@@ -10,11 +10,11 @@ It turns a storage unit into a player-run social market:
 - visitors can still underpay, but doing so creates strikes and cooldowns
 - owners can freeze the ruleset so traders know the policy cannot change afterward
 
-`Trust Locker` is a working title. The product name may change.
+`Barter Box` is the product name. Package and module identifiers remain `trust_locker` for on-chain stability.
 
 ## What This Repo Contains
 
-- A Move package for the Trust Locker storage-unit extension
+- A Move package for the Barter Box storage-unit extension
 - Local deployment, seeding, inspection, and demo scripts
 - A browser dApp for owner configuration and visitor trade flows
 - Submission, demo, audit, and deployment notes for the project
@@ -39,7 +39,7 @@ Still in progress:
 
 ## Core Design
 
-Trust Locker is intentionally **not** a universal price oracle.
+Barter Box is intentionally **not** a universal price oracle.
 
 Instead:
 
@@ -162,7 +162,7 @@ Deferred:
 
 Key project notes:
 
-- [Trust Locker workspace README](apps/utopia-smart-assembly/README.md)
+- [Barter Box workspace README](apps/utopia-smart-assembly/README.md)
 - [Agent contract](AGENTS.md)
 - [Project status](notes/trust-locker/STATUS.md)
 - [Phase 2 in-game deployment](notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md)

@@ -13,7 +13,7 @@ import {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Set Trust Locker Visitor Tribe (${network})`);
+    logHeading(`Set Barter Box Visitor Tribe (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);

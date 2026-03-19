@@ -1,13 +1,13 @@
-# Trust Locker Workspace
+# Barter Box Workspace
 
-`Trust Locker` is a working title. Keep code semantics stable, but treat product naming as provisional until we choose a final name.
+`Barter Box` is the product name. Keep code/package semantics stable; `trust_locker` identifiers remain in place until a deliberate contract rename.
 
-This workspace contains the project-owned code for the Trust Locker Smart Assembly Phase 2 build.
+This workspace contains the project-owned code for the Barter Box Smart Assembly Phase 2 build.
 
 ## Scope
 
 - `move-contracts/trust_locker_extension`
-  - On-chain Trust Locker extension package
+  - On-chain Barter Box extension package
 - `scripts`
   - Local publish, configure, seed, and demo helpers
 - `src`
@@ -80,7 +80,7 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 
 ## Product Snapshot
 
-Trust Locker turns a Storage Unit into a programmable social market:
+Barter Box turns a Storage Unit into a programmable social market:
 
 - owners define accepted item `type_id`s and point values
 - owners define `friendly`, `neutral`, and `rival` pricing buckets

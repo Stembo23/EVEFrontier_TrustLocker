@@ -7,7 +7,7 @@ export type CatalogItem = {
   note: string;
 };
 
-export const PRODUCT_WORKING_NAME = "Trust Locker";
+export const PRODUCT_WORKING_NAME = "Barter Box";
 export const LOCALNET_DEPLOYMENT_METADATA_URL = "/deployments/localnet/trust-locker.json";
 
 export type LockerPolicyDraft = {

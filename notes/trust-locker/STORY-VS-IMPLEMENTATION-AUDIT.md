@@ -1,4 +1,4 @@
-# Trust Locker MVP Story vs Implementation Audit
+# Barter Box MVP Story vs Implementation Audit
 
 Date: 2026-03-17 (America/Los_Angeles)
 
@@ -64,7 +64,7 @@ v1 boundaries are currently respected:
 v2 deferred items are documented:
 
 - global player trade reputation carried across lockers
-- final naming/branding pass (`Trust Locker` currently placeholder)
+- contract/package rename pass, if ever desired, is still deferred
 
 ## Risk Register
 

@@ -1,16 +1,16 @@
-# Trust Locker Phase 2 Internal Audit Findings
+# Barter Box Phase 2 Internal Audit Findings
 
 Date: 2026-03-18
 
-Scope: Trust Locker Move package, browser dApp, local demo signer flow, hosted/in-game readiness surfaces, and Phase 2 coordination docs.
+Scope: Barter Box Move package, browser dApp, local demo signer flow, hosted/in-game readiness surfaces, and Phase 2 coordination docs.
 
 Method:
 - Reviewed [AGENTS.md](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/AGENTS.md)
 - Reviewed [README.md](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly/README.md)
-- Reviewed current Trust Locker Move and offchain code paths
+- Reviewed current Barter Box Move and offchain code paths
 - Ran `sui move test` in the Move package directory
 - Ran `pnpm build` in the app workspace
-- Ran a deterministic external-auditor CLI scan against the Trust Locker Move package
+- Ran a deterministic external-auditor CLI scan against the Barter Box Move package
 
 ## Executive Summary
 
@@ -30,7 +30,7 @@ Phase 2 is materially stronger than the MVP baseline. The Move package now imple
 - `pnpm build` now fails in `apps/utopia-smart-assembly/src/liveLocalnet.ts` with a `CatalogItem.volumeM3` type mismatch.
 - `pnpm locker:set-strike-network --dry-run` passed.
 - The external auditor CLI executed deterministically against the Move package, but the scan remains incomplete because the prover stage failed.
-- The sampled Utopia public object route resolves real assembly context, but that is a read-only context proof, not a Trust Locker deployment proof.
+- The sampled Utopia public object route resolves real assembly context, but that is a read-only context proof, not a Barter Box deployment proof.
 
 ## Triage Order
 

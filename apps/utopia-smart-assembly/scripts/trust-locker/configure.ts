@@ -38,7 +38,7 @@ function getAcceptedPoints(expectedCount: number): bigint[] {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Configure Trust Locker Policy (${network})`);
+    logHeading(`Configure Barter Box Policy (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);
@@ -147,6 +147,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error("Failed to configure Trust Locker policy:", error);
+    console.error("Failed to configure Barter Box policy:", error);
     process.exit(1);
 });

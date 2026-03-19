@@ -77,7 +77,7 @@ function createLocalnetClient(metadata: DeploymentMetadata): SuiJsonRpcClient {
 function buildEd25519Keypair(secretKey: string): Ed25519Keypair {
   const { scheme, secretKey: decodedSecretKey } = decodeSuiPrivateKey(secretKey.trim());
   if (scheme !== "ED25519") {
-    throw new Error("Trust Locker local demo signer requires an ED25519 `suiprivkey...` secret.");
+    throw new Error("Barter Box local demo signer requires an ED25519 `suiprivkey...` secret.");
   }
   return Ed25519Keypair.fromSecretKey(decodedSecretKey);
 }
@@ -270,7 +270,7 @@ function buildBaseSnapshot(metadata: DeploymentMetadata): LockerSnapshot {
   ).map((typeId) => findCatalogItem(typeId, 10));
 
   return {
-    lockerName: "Localnet Trust Locker",
+    lockerName: "Localnet Barter Box",
     lockerId: buildRuntimeContext(metadata).lockerId,
     trustStatus: "mutable",
     owner: {
@@ -666,7 +666,7 @@ async function tryLoadLocalnetSnapshot(
   const sharedPricingPenaltyBps = Number(parseU64(sharedPricingPenaltyBpsBytes) ?? 0n);
 
   const snapshot: LockerSnapshot = {
-    lockerName: "Localnet Trust Locker",
+    lockerName: "Localnet Barter Box",
     lockerId: runtime.lockerId,
     trustStatus: isFrozen ? "frozen" : "mutable",
     owner: {
@@ -729,7 +729,7 @@ async function tryLoadLocalnetSnapshot(
     recentSignals,
   };
 
-  notes.push("Localnet deployment metadata loaded from the published Trust Locker JSON.");
+  notes.push("Localnet deployment metadata loaded from the published Barter Box JSON.");
   notes.push("Live chain reads verified for policy, trust state, visitor penalty state, and inventory balances.");
   notes.push("Browser write actions target the same owner-cap and trade entrypoints as the local scripts.");
   if (snapshot.openInventory.length === 0) {

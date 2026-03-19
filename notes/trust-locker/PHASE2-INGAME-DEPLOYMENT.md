@@ -1,4 +1,4 @@
-# Trust Locker Phase 2 In-Game Deployment
+# Barter Box Phase 2 In-Game Deployment
 
 This file is a short alias to the canonical runbook:
 

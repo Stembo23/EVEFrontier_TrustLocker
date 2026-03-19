@@ -15,7 +15,7 @@ import {
 
 export async function runTrade(mode: "fair" | "dishonest") {
     const network = getNetwork();
-    logHeading(`Trust Locker Trade (${mode.toUpperCase()}, ${network})`);
+    logHeading(`Barter Box Trade (${mode.toUpperCase()}, ${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);

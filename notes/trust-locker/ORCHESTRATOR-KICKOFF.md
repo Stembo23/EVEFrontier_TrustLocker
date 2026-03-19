@@ -1,4 +1,4 @@
-# Trust Locker Orchestrator Kickoff
+# Barter Box Orchestrator Kickoff
 
 ## Current Product Decision
 
@@ -6,7 +6,7 @@ Strikes are currently **per character per locker**, not global across the world.
 
 - Character-level key: the visitor penalty state is stored by `character_id`
 - Locker-level scope: the penalty state lives inside each locker policy
-- Result: reputation follows a character only within an individual Trust Locker
+- Result: reputation follows a character only within an individual Barter Box
 
 ## Why This Scope Is Right For MVP
 
@@ -16,7 +16,7 @@ Strikes are currently **per character per locker**, not global across the world.
  - Submission readiness is a production-grade localnet demo plus Utopia public hardening and owned-cutover validation; live Utopia writes belong to the Utopia cutover path, not a separate generic testnet stage
 - Browser-side owner policy writes and visitor trade execution are part of the submission baseline
 
-`Trust Locker` is also a placeholder name. All lanes should preserve current file/package identifiers unless the orchestrator explicitly approves a rename pass.
+`Barter Box` is the product name. All lanes should preserve current file/package identifiers unless the orchestrator explicitly approves a contract rename pass.
 
 ## Lane Launch Order
 
@@ -60,7 +60,7 @@ Read:
 
 Task:
 
-- build localnet-first publish/configure helpers for Trust Locker
+- build localnet-first publish/configure helpers for Barter Box
 - target outputs:
   - `deployments/localnet/trust-locker.json`
   - script entrypoints for publish, authorize, configure, seed, fair-trade, dishonest-trade

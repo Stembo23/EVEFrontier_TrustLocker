@@ -122,7 +122,7 @@ async function readPolicyField(client: ReturnType<typeof createClient>, extensio
 
 async function inspect() {
     const network = getNetwork();
-    logHeading(`Trust Locker Live Inspect (${network})`);
+    logHeading(`Barter Box Live Inspect (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);
@@ -312,6 +312,6 @@ async function inspect() {
 }
 
 inspect().catch((error) => {
-    console.error("Failed to inspect Trust Locker state:", error);
+    console.error("Failed to inspect Barter Box state:", error);
     process.exit(1);
 });

@@ -815,7 +815,7 @@ function App() {
             <p className="eyebrow">{PRODUCT_WORKING_NAME} MVP</p>
             <h1>Loading assembly context...</h1>
             <p className="hero-text">
-              {isResolvingData ? "Resolving live locker state..." : "Unable to resolve the Trust Locker view model."}
+              {isResolvingData ? "Resolving live locker state..." : "Unable to resolve the Barter Box view model."}
             </p>
           </div>
         </section>
@@ -1391,7 +1391,7 @@ function App() {
             </p>
             {showSupportCopy ? <p>
               Locker branding and general assembly metadata remain part of the existing EVE Frontier Edit Unit flow.
-              Trust Locker-specific owner control starts here.
+              Barter Box-specific owner control starts here.
             </p> : null}
           </div>
 
@@ -1747,7 +1747,7 @@ function App() {
           <p className="section-label">Recent Locker Signals</p>
           <ul className="signal-list">
             {snapshot.recentSignals.length === 0 ? (
-              <li className="empty-state">No recent Trust Locker events are available.</li>
+              <li className="empty-state">No recent Barter Box events are available.</li>
             ) : (
               snapshot.recentSignals.map((signal) => (
                 <li key={`${signal.digest}-${signal.type}`}>

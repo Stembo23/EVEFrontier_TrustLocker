@@ -1,19 +1,19 @@
-# Trust Locker Agent Contract
+# Barter Box Agent Contract
 
 ## Product Vision
 
-`Trust Locker` is the current working name for a programmable social market for EVE Frontier. Treat the name as a placeholder until final branding is chosen. The product is not an objective pricing oracle. Owners publish a ruleset, visitors inspect that ruleset, and the assembly enforces the declared policy consistently.
+`Barter Box` is the product name for this programmable social market for EVE Frontier. Package and module identifiers remain `trust_locker` until there is an explicit contract-level rename pass. The product is not an objective pricing oracle. Owners publish a ruleset, visitors inspect that ruleset, and the assembly enforces the declared policy consistently.
 
 Phase 2 extends the MVP into:
 - a hosted in-world assembly dApp that opens in the in-game browser when players press `F`
 - a dual-mode UI (`full` and `in-game`)
-- shared strike persistence across owner-defined Trust Locker networks
+- shared strike persistence across owner-defined Barter Box networks
 - Utopia public hardening, then owned-Utopia cutover, then post-cutover hardening
 - a dual audit gate before Phase 2 is considered complete
 
 ## Canonical Vocabulary
 
-- `locker`: a storage unit running the Trust Locker extension
+- `locker`: a storage unit running the Barter Box extension
 - `open inventory`: the public shelf inventory for the locker
 - `owned inventory`: a visitor-specific inventory inside the same storage unit
 - `points`: the owner-defined fairness score assigned per accepted `type_id`
@@ -116,7 +116,7 @@ Phase 2 extends the MVP into:
 
 ## Agent Workflow
 
-- Every agent or thread should start by reading this file and the current Trust Locker README
+- Every agent or thread should start by reading this file and the current Barter Box README
 - Every lane should publish:
   - assumptions
   - required inputs

@@ -16,7 +16,7 @@ import {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Set Trust Locker Strike Network Policy (${network})`);
+    logHeading(`Set Barter Box Strike Network Policy (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);
@@ -99,6 +99,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error("Failed to set Trust Locker strike network policy:", error);
+    console.error("Failed to set Barter Box strike network policy:", error);
     process.exit(1);
 });

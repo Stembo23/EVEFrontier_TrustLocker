@@ -1,10 +1,10 @@
-# Trust Locker Submission Proof Matrix
+# Barter Box Submission Proof Matrix
 
 This matrix maps each submission claim to a concrete artifact or verification path.
 
 | Claim | Evidence | Status | Notes |
 |---|---|---:|---|
-| Working title is placeholder only | [`AGENTS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/AGENTS.md), [`apps/utopia-smart-assembly/README.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly/README.md), [`notes/trust-locker/STATUS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/STATUS.md) | Proven | Name is intentionally provisional in all planning docs. |
+| Product naming is finalized | [`AGENTS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/AGENTS.md), [`apps/utopia-smart-assembly/README.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly/README.md), [`notes/trust-locker/STATUS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/STATUS.md) | Proven | Product copy now uses `Barter Box`; package/module identifiers remain `trust_locker` intentionally. |
 | World-global player reputation is v2 | [`AGENTS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/AGENTS.md), [`notes/trust-locker/STATUS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/STATUS.md) | Proven | Do not narrate automatic world-global reputation as current behavior. |
 | Move policy/trade logic works | `sui move test` and [`apps/utopia-smart-assembly/move-contracts/trust_locker_extension/tests/trust_locker_tests.move`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/apps/utopia-smart-assembly/move-contracts/trust_locker_extension/tests/trust_locker_tests.move) | Proven | 13 passing tests cover fair trade, underpay, cooldown block, freeze, bucket pricing, overlap rejection, invalid type handling, and shared strike-network behavior. |
 | Localnet operator flow is reproducible | [`notes/trust-locker/OPERATOR-RUNBOOK.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/OPERATOR-RUNBOOK.md), [`notes/trust-locker/STATUS.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/STATUS.md) | Proven | Publish, authorize, configure, seed, trade, inspect, and signals all have working scripts. |

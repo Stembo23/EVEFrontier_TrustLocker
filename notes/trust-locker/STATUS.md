@@ -1,8 +1,8 @@
-# Trust Locker Status
+# Barter Box Status
 
 ## Current State
 
-- Working title remains `Trust Locker`; final naming is still open.
+- Product name is now `Barter Box`; package and module identifiers remain `trust_locker` for stability.
 - World-global player trade reputation remains deferred to v2.
 - The localnet execution path is now working end to end for the core MVP loop.
 - Utopia is now treated as the public testnet target, not as a separate post-localnet stage.
@@ -32,7 +32,7 @@
 - Repo-level agent contract in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/AGENTS.md`
 - Move package and tests in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/move-contracts/trust_locker_extension`
 - Local dApp shell and data-provider boundary in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly`
-- Trust Locker localnet script suite in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/scripts/trust-locker`
+- Barter Box localnet script suite in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/scripts/trust-locker`
 - Authoritative operator runbook in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/OPERATOR-RUNBOOK.md`
 - Submission proof matrix in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/SUBMISSION-PROOF-MATRIX.md`
 - Browser-side localnet runtime with live policy, inventory, signal, and mutation support in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/src`
@@ -68,7 +68,7 @@
 - `pnpm demo:prepare --dry-run` works.
 - `pnpm demo:verify --dry-run` works.
 - `pnpm demo:script` works.
-- Localnet world was rebuilt after regenesis and Trust Locker was republished against the live world package.
+- Localnet world was rebuilt after regenesis and Barter Box was republished against the live world package.
 - Localnet owner flow succeeds:
   - extension authorization
   - locker policy configuration
@@ -96,7 +96,7 @@
 
 ## Important Fixes Landed
 
-- Correct localnet package publishing now uses `sui client test-publish --build-env testnet --pubfile-path ...` so Trust Locker links against the live world package instead of republishing `world` into the extension package.
+- Correct localnet package publishing now uses `sui client test-publish --build-env testnet --pubfile-path ...` so Barter Box links against the live world package instead of republishing `world` into the extension package.
 - Owner-cap borrowing now uses `Receiving` refs instead of plain object refs.
 - Local demo actor mapping is corrected:
   - locker owner = `frontier-character-a` / `PLAYER_A`
@@ -126,7 +126,7 @@
   - prover-stage failure is still open
   - offchain external scan is not available from the current auditor CLI because it expects a Move manifest
 - Utopia migration still has one remaining live ownership milestone:
-  - point a real owned Utopia storage unit at the hosted Trust Locker app and validate `F` opening the in-game browser
+  - point a real owned Utopia storage unit at the hosted Barter Box app and validate `F` opening the in-game browser
 - Owned Utopia storage-unit cutover is still pending user-side control/permissions.
 - Final in-game visual polish is still open and should stay treated as WIP until the next asset pass.
 

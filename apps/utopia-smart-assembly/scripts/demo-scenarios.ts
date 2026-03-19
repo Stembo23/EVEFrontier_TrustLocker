@@ -1,7 +1,7 @@
 import { DEFAULT_LOCKER_POLICY, TRUST_LOCKER_CATALOG } from "../trust-locker.config";
 
 const lines = [
-  "Trust Locker demo scenarios",
+  "Barter Box demo scenarios",
   "===========================",
   "1. Fair locker",
   "   Owner seeds a frozen locker with baseline industrial items and a neutral point table.",

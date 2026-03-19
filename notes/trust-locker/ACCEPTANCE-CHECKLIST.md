@@ -1,10 +1,10 @@
-# Trust Locker MVP Acceptance Checklist
+# Barter Box MVP Acceptance Checklist
 
 Use this checklist to accept or reject MVP readiness for hackathon submission.
 
 ## Product Contract Acceptance
 
-- [ ] Working title only: `Trust Locker` is treated as placeholder.
+- [x] Product name is `Barter Box`; package/module identifiers remain unchanged.
 - [ ] v1 scope remains localnet-first, then Utopia public hardening and owned cutover.
 - [ ] No-scope-creep rules are preserved:
   - [ ] no multi-item baskets

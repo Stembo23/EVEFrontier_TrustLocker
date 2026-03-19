@@ -1,6 +1,6 @@
-# Trust Locker Phase 2 Utopia Migration
+# Barter Box Phase 2 Utopia Migration
 
-This is the canonical migration checklist for moving Trust Locker from localnet proof into Utopia public hardening and owned-unit in-game cutover.
+This is the canonical migration checklist for moving Barter Box from localnet proof into Utopia public hardening and owned-unit in-game cutover.
 
 GitHub + Cloudflare Pages is the primary deployment path. Vercel remains a secondary fallback if needed. Any static-SPA host is acceptable if it preserves the same URL/query contract.
 
@@ -67,7 +67,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 
 - Obtain or control a real Utopia storage unit.
 - Confirm you can edit the unit’s custom URL.
-- Point the custom URL at the hosted Trust Locker app with `view=in-game`.
+- Point the custom URL at the hosted Barter Box app with `view=in-game`.
 - Validate the in-game `F` interaction opens the hosted app.
 - Confirm owner-specific controls appear only for owner-capable accounts.
 - Treat this as the real in-game integration milestone.
@@ -102,7 +102,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 
 - [ ] Obtain or control a real Utopia storage unit.
 - [ ] Confirm you have permission to edit that unit’s custom URL.
-- [ ] Set the custom URL to the hosted Trust Locker app.
+- [ ] Set the custom URL to the hosted Barter Box app.
 - [ ] Use the in-game `F` interaction to open the hosted app from the unit.
 - [ ] Confirm the in-game browser lands in `view=in-game` by default.
 - [ ] Capture the final hosted URL and cutover proof for submission.

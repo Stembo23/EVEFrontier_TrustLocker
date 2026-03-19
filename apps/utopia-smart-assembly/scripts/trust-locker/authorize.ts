@@ -14,7 +14,7 @@ import {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Authorize Trust Locker Extension (${network})`);
+    logHeading(`Authorize Barter Box Extension (${network})`);
 
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);
@@ -73,6 +73,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error("Failed to authorize Trust Locker extension:", error);
+    console.error("Failed to authorize Barter Box extension:", error);
     process.exit(1);
 });

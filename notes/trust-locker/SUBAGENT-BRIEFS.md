@@ -1,4 +1,4 @@
-# Trust Locker Lane Briefs
+# Barter Box Lane Briefs
 
 Use these briefs as the starting prompt for Codex subagents or separate threads.
 
@@ -21,7 +21,7 @@ Use these briefs as the starting prompt for Codex subagents or separate threads.
 ## Scripts Lane
 
 - Work only in `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/scripts`
-- Build localnet-first transaction helpers against the published Trust Locker package
+- Build localnet-first transaction helpers against the published Barter Box package
 - Output deployment metadata to `deployments/localnet/trust-locker.json`
 
 ## Frontend Lane

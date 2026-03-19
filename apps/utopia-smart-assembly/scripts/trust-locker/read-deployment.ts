@@ -7,7 +7,7 @@ import {
 
 function main() {
     const network = getNetwork();
-    logHeading(`Read Trust Locker Deployment (${network})`);
+    logHeading(`Read Barter Box Deployment (${network})`);
     const deployment = readTrustLockerDeployment(network);
     const objectIds = resolveRuntimeObjectIds(deployment);
 
@@ -17,7 +17,7 @@ function main() {
     console.log("RPC URL:", deployment.rpcUrl);
     console.log("World package:", deployment.world.packageId);
     console.log("Object registry:", deployment.world.objectRegistry);
-    console.log("Trust Locker package:", deployment.trustLocker.packageId);
+    console.log("Barter Box package:", deployment.trustLocker.packageId);
     console.log("ExtensionConfig:", deployment.trustLocker.extensionConfigId);
     console.log("AdminCap:", deployment.trustLocker.adminCapId ?? "not set");
     console.log("Derived storage unit:", objectIds.storageUnitId);

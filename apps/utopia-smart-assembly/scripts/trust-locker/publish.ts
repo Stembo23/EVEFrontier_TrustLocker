@@ -17,7 +17,7 @@ import {
 
 async function main() {
     const network = getNetwork();
-    logHeading(`Publish Trust Locker (${network})`);
+    logHeading(`Publish Barter Box (${network})`);
     const withUnpublishedDeps = boolFromEnv(
         "LOCKER_PUBLISH_WITH_UNPUBLISHED_DEPS",
         network === "localnet"
@@ -63,7 +63,7 @@ async function main() {
     writeTrustLockerDeployment(deployment);
 
     console.log("Publish digest:", publish.output?.digest ?? "unknown");
-    console.log("Trust Locker package:", ids.packageId);
+    console.log("Barter Box package:", ids.packageId);
     console.log("ExtensionConfig:", ids.extensionConfigId);
     console.log("AdminCap:", ids.adminCapId ?? "not found");
     console.log("Deployment metadata:", deployment.paths.deploymentFile);
@@ -71,6 +71,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error("Failed to publish Trust Locker:", error);
+    console.error("Failed to publish Barter Box:", error);
     process.exit(1);
 });

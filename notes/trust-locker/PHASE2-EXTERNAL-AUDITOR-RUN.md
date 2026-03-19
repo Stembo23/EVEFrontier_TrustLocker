@@ -1,8 +1,8 @@
-# Trust Locker Phase 2 External Auditor Run
+# Barter Box Phase 2 External Auditor Run
 
 Date: 2026-03-18
 
-Purpose: run the external auditor assistant against the Trust Locker codebase and capture what the current tool can and cannot sign off on.
+Purpose: run the external auditor assistant against the Barter Box codebase and capture what the current tool can and cannot sign off on.
 
 ## Invocation
 
@@ -43,7 +43,7 @@ Generated Move-package artifacts:
 
 ## Interpretation
 
-The external auditor pipeline is reachable and can scan the Trust Locker Move package, but this does not yet produce a clean external signoff because the prover stage fails before the run can be considered complete.
+The external auditor pipeline is reachable and can scan the Barter Box Move package, but this does not yet produce a clean external signoff because the prover stage fails before the run can be considered complete.
 
 That means:
 - the external integration path is real,
@@ -62,5 +62,5 @@ Open audit-gate items to carry forward:
 
 1. Re-run the Move-package scan after the prover failure is understood.
 2. Track whether the prover failure is an environment issue or a package-level Move Prover configuration issue.
-3. Keep the external audit report focused on Trust Locker Move unless the auditor pipeline adds a non-Move/offchain mode.
+3. Keep the external audit report focused on Barter Box Move unless the auditor pipeline adds a non-Move/offchain mode.
 4. Use the internal audit as the primary offchain/browser security review until that happens.

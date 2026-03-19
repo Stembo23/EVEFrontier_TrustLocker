@@ -1,6 +1,6 @@
-# Trust Locker Operator Runbook
+# Barter Box Operator Runbook
 
-This is the authoritative local/demo sequence for Trust Locker. Use it as the source of truth for reset, prepare, and verify.
+This is the authoritative local/demo sequence for Barter Box. Use it as the source of truth for reset, prepare, and verify.
 
 ## Preconditions
 
@@ -81,7 +81,7 @@ Use this only when you need the granular commands behind `prepare` and `verify`.
 - `locker:signals` must show recent policy/trade/penalty events
 - The browser proof narrative must explicitly state that localnet uses the unsafe local-only demo signer because wallet-extension custom-RPC support was not reliable enough for the submission path
 - The final demo script must state:
-  - `Trust Locker` is a working title
+  - `Barter Box` is the product name
   - global player reputation is deferred to v2
   - Utopia live writes are stretch, not baseline
 
@@ -103,7 +103,7 @@ Use this only when you are ready to point a real storage unit at the hosted app.
 3. Confirm the in-game browser opens the hosted app on a controlled assembly.
 4. Confirm the in-game layout hides local demo signer and other proof-only controls.
 5. Obtain a real Utopia storage unit that you own or can edit.
-6. Set that unit’s custom URL to the hosted Trust Locker app.
+6. Set that unit’s custom URL to the hosted Barter Box app.
 7. Open the unit in-game with `F`.
 8. Confirm the hosted app loads in the in-game browser with the expected `itemId`.
 9. Capture the final hosted URL, unit identity, and screenshot proof.
