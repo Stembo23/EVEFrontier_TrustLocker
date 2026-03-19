@@ -432,7 +432,7 @@ function App() {
   const showAdvancedOwnerControls = uiCapabilities.showAdvancedOwnerControls;
   const ownerActor = resolveActorExecution("owner");
   const visitorActor = resolveActorExecution("visitor");
-  const showOwnerPanel = showFullDetail || Boolean(ownerActor);
+  const showOwnerPanel = showFullDetail;
 
   useEffect(() => {
     if (!snapshot) return;
@@ -877,6 +877,8 @@ function App() {
           : null;
   const tradeButtonLabel = displayedCooldownActive ? "Cooldown active" : "Execute trade";
   const showCompactActionStatus = isInGameMode && actionState.status !== "idle";
+  const inGameActionStatusLabel =
+    actionState.status === "idle" ? null : actionState.status === "success" ? "Transaction complete" : actionState.label;
 
   return (
     <main className={`app-shell ${isInGameMode ? "mode-in-game" : "mode-full"}`}>
@@ -947,14 +949,29 @@ function App() {
               <dt>Wallet</dt>
               <dd>{account?.address ? compactAddress(account.address, isInGameMode) : "Not connected"}</dd>
             </div>
-            <div>
-              <dt>Tenant</dt>
-              <dd>{runtime?.tenant ?? tenant}</dd>
-            </div>
-            <div>
-              <dt>Wallet network</dt>
-              <dd>{currentNetwork}</dd>
-            </div>
+            {showFullDetail ? (
+              <>
+                <div>
+                  <dt>Tenant</dt>
+                  <dd>{runtime?.tenant ?? tenant}</dd>
+                </div>
+                <div>
+                  <dt>Wallet network</dt>
+                  <dd>{currentNetwork}</dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <dt>Shelf lines</dt>
+                  <dd>{snapshot.openInventory.length}</dd>
+                </div>
+                <div>
+                  <dt>Hold lines</dt>
+                  <dd>{snapshot.visitorInventory.length}</dd>
+                </div>
+              </>
+            )}
           </dl>
           {showSupportCopy ? (
             <div className="connection-note">
@@ -1109,6 +1126,7 @@ function App() {
         </article>
         ) : null}
 
+        {showFullDetail ? (
         <article className="card summary-card">
           <p className="section-label">{showFullDetail ? "Locker Summary" : "Behavior"}</p>
           <div className="owner-controls">
@@ -1154,6 +1172,7 @@ function App() {
             ) : null}
           </ul>
         </article>
+        ) : null}
 
         <article className="card inventory-card">
           <p className="section-label">{isInGameMode ? "Locker Shelf" : "Open Inventory"}</p>
@@ -1169,7 +1188,7 @@ function App() {
                     {showFullDetail ? <p>{item.note}</p> : null}
                   </div>
                   <div className="item-meta">
-                    <span>type_id {item.typeId}</span>
+                    {showFullDetail ? <span>type_id {item.typeId}</span> : null}
                     <span>{item.quantity} open</span>
                     <span>{item.points} pts</span>
                     <span>{formatVolume(item.volumeM3, item.quantity)}</span>
@@ -1194,7 +1213,7 @@ function App() {
                     {showFullDetail ? <p>{item.note}</p> : null}
                   </div>
                   <div className="item-meta">
-                    <span>type_id {item.typeId}</span>
+                    {showFullDetail ? <span>type_id {item.typeId}</span> : null}
                     <span>{item.quantity} owned</span>
                     <span>{item.points} pts</span>
                     <span>{formatVolume(item.volumeM3, item.quantity)}</span>
@@ -1213,29 +1232,34 @@ function App() {
               <strong>{snapshot.visitor.relationshipBucket}</strong>
             </div>
             <div>
-              <span>Strikes at this locker</span>
+              <span>Strikes at this unit</span>
               <strong>{snapshot.visitor.localStrikeCount}</strong>
             </div>
             <div>
-              <span>Shared network strikes</span>
+              <span>Shared strikes</span>
               <strong>{snapshot.sharedPenalty.penalties.strikeCount}</strong>
             </div>
             <div>
               <span>Local cooldown</span>
-              <strong>{displayedCooldownActive ? "active" : "clear"}</strong>
+              <strong>{displayedCooldownActive ? displayedCooldownEndLabel : "clear"}</strong>
             </div>
-            <div>
-              <span>Local cooldown until</span>
-              <strong>{displayedCooldownEndLabel}</strong>
-            </div>
-            <div>
-              <span>Network lockout</span>
-              <strong>{displayedSharedLockoutActive ? "active" : "clear"}</strong>
-            </div>
-            <div>
-              <span>Network lockout until</span>
-              <strong>{displayedSharedLockoutLabel}</strong>
-            </div>
+            {showFullDetail ? (
+              <>
+                <div>
+                  <span>Network lockout</span>
+                  <strong>{displayedSharedLockoutActive ? displayedSharedLockoutLabel : "clear"}</strong>
+                </div>
+                <div>
+                  <span>Network surcharge</span>
+                  <strong>{(snapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(2)}%</strong>
+                </div>
+              </>
+            ) : (
+              <div>
+                <span>Network penalty</span>
+                <strong>{networkPenaltyCopy}</strong>
+              </div>
+            )}
           </div>
           {isInGameMode ? <p className="trade-copy">{networkPenaltyCopy}</p> : null}
           <div className="trade-grid">
@@ -1303,14 +1327,23 @@ function App() {
                 : "This preview uses the published locker policy, the detected relationship bucket, and any shared strike-network surcharge currently attached to this visitor."}
             </p>
             <div className="preview-metrics">
-              <div>
-                <span>Base request</span>
-                <strong>{preview.baseRequestedPoints}</strong>
-              </div>
-              <div>
-                <span>Effective request</span>
-                <strong>{preview.effectiveRequestedPoints}</strong>
-              </div>
+              {showFullDetail ? (
+                <>
+                  <div>
+                    <span>Base request</span>
+                    <strong>{preview.baseRequestedPoints}</strong>
+                  </div>
+                  <div>
+                    <span>Effective request</span>
+                    <strong>{preview.effectiveRequestedPoints}</strong>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <span>Request total</span>
+                  <strong>{preview.effectiveRequestedPoints}</strong>
+                </div>
+              )}
               <div>
                 <span>Offered points</span>
                 <strong>{preview.offeredPoints}</strong>
@@ -1327,22 +1360,28 @@ function App() {
                 <span>Deficit</span>
                 <strong>{preview.deficitPoints}</strong>
               </div>
-              <div>
-                <span>Multiplier</span>
-                <strong>{(preview.pricingMultiplierBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div>
-                <span>Network penalty</span>
-                <strong>{(preview.sharedPricingPenaltyBps / 100).toFixed(2)}%</strong>
-              </div>
-              <div>
-                <span>Shared scope</span>
-                <strong>{preview.sharedPenaltyScopeId || "isolated"}</strong>
-              </div>
+              {showFullDetail ? (
+                <>
+                  <div>
+                    <span>Multiplier</span>
+                    <strong>{(preview.pricingMultiplierBps / 100).toFixed(2)}%</strong>
+                  </div>
+                  <div>
+                    <span>Network penalty</span>
+                    <strong>{(preview.sharedPricingPenaltyBps / 100).toFixed(2)}%</strong>
+                  </div>
+                  <div>
+                    <span>Shared scope</span>
+                    <strong>{preview.sharedPenaltyScopeId || "isolated"}</strong>
+                  </div>
+                </>
+              ) : null}
             </div>
             {preview.sharedPenaltyLockoutActive ? (
               <p className="preview-detail">
-                Shared trust network lockout: {preview.sharedPenaltyLockoutLabel}
+                {showFullDetail
+                  ? `Shared trust network lockout: ${preview.sharedPenaltyLockoutLabel}`
+                  : `Network lockout: ${preview.sharedPenaltyLockoutLabel}`}
               </p>
             ) : null}
           </div>
@@ -1366,6 +1405,12 @@ function App() {
               Refresh
             </button>
           </div>
+          {showCompactActionStatus ? (
+            <div className="inline-status">
+              <p className={`action-status ${actionState.status}`}>{inGameActionStatusLabel}</p>
+              <p className="support-copy">{actionState.message ?? "No recent action."}</p>
+            </div>
+          ) : null}
           {showSupportCopy ? (
             <>
               <p className="support-copy">
@@ -1761,7 +1806,7 @@ function App() {
         </article>
         ) : null}
 
-        {(uiCapabilities.showActionStatusPanel || showCompactActionStatus) ? (
+        {uiCapabilities.showActionStatusPanel ? (
         <article className="card status-trace-card">
           <p className="section-label">Wallet Action Status</p>
           <p className={`action-status ${actionState.status}`}>{actionState.label}</p>

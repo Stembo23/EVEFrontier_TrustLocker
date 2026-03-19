@@ -96,6 +96,7 @@ Barter Box turns a Storage Unit into a programmable social market:
 - the UI will support both:
   - `Full Detail` mode for judges/debug
   - `In-Game` mode for player-facing assembly interaction
+- the in-game mode is intentionally transaction-first and omits owner governance by default; owner controls remain available in `view=full`
 - the final in-game UI polish is still in progress
 - the same hosted app will serve standalone browser and in-game browser contexts via the shared `tenant` + `itemId` + `view` URL contract
 - Cloudflare Pages is the primary hosted path, with Vercel kept as a fallback

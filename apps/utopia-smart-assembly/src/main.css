@@ -483,6 +483,17 @@ textarea {
   padding: 14px;
 }
 
+.inline-status {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.inline-status .support-copy {
+  margin-bottom: 0;
+}
+
 .preview-card.safe {
   border-color: rgba(255, 255, 255, 0.16);
 }
@@ -587,10 +598,6 @@ textarea {
   grid-column: 1 / -1;
 }
 
-.app-shell.mode-in-game .owner-card {
-  grid-column: 1 / -1;
-}
-
 .app-shell.mode-in-game .fact-grid,
 .app-shell.mode-in-game .owner-controls,
 .app-shell.mode-in-game .preview-metrics {
@@ -605,12 +612,16 @@ textarea {
   display: none;
 }
 
-.app-shell.mode-in-game .hero-copy h1 {
-  font-size: clamp(1.4rem, 2vw, 2rem);
+.app-shell.mode-in-game .trade-card .owner-controls {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.app-shell.mode-in-game .owner-card .trade-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.app-shell.mode-in-game .preview-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-shell.mode-in-game .hero-copy h1 {
+  font-size: clamp(1.4rem, 2vw, 2rem);
 }
 
 .app-shell.mode-in-game .status-trace-card {
@@ -658,7 +669,8 @@ textarea {
   .signer-status-grid,
   .app-shell.mode-in-game .fact-grid,
   .app-shell.mode-in-game .owner-controls,
-  .app-shell.mode-in-game .preview-metrics {
+  .app-shell.mode-in-game .preview-metrics,
+  .app-shell.mode-in-game .trade-card .owner-controls {
     grid-template-columns: 1fr;
   }
 

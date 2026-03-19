@@ -40,6 +40,14 @@
 - Dual-mode browser UI:
   - `view=full` for judge/debug/proof surfaces
   - `view=in-game` for compact player-facing assembly interaction
+- In-game mode is now intentionally transaction-first:
+  - assembly identity
+  - shelf inventory
+  - visitor hold
+  - points / quantity / volume
+  - cooldown / network penalty state
+  - trade execution
+  - owner governance remains in `view=full` rather than the default in-game surface
 - Shared strike persistence in the Move package and browser app:
   - owner-defined `strike_scope_id`
   - opt-in `use_shared_penalties`
@@ -118,7 +126,7 @@
 
 ## Remaining Gaps
 
-- Final visual polish is still open. The app now has a dark EVE-style panel treatment and dual-mode layout, but it still needs a stronger asset/icon pass before calling the in-game UI finished.
+- Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like in-game information layout, but it still needs a stronger asset/icon pass before calling the in-game UI finished.
 - Hosted deployment and in-game custom URL cutover are documented and ready for a real Utopia storage-unit handoff.
 - Phase 2 audit gate is partially complete:
   - internal review is documented
