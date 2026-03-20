@@ -39,6 +39,10 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
   - `perpetual_market` is the circulation/storefront model
   - `procurement_market` routes visitor receipts into the same storage unit's owner reserve
   - Fuel fees remain deferred unless a real visitor-side debit and owner-controlled credit path is proven
+- Treat owner stock/claim workflow as launch-critical:
+  - `perpetual_market` should only expose shelf circulation
+  - `procurement_market` should expose `Claimable by owner`
+  - hosted Utopia owner testing is not complete until stock/claim flow is integrated or explicitly blocked by the platform
 - Run a dual audit gate before calling Phase 2 complete
 - Treat the final owner and visitor UI passes as a work in progress, not a finished visual pass
 
@@ -117,6 +121,7 @@ Barter Box turns a Storage Unit into a programmable social market:
 - owner policy mutation/freeze and visitor trade execution are implemented in-browser
 - localnet browser writes now use a gated unsafe local-only demo signer for repeatable proof
 - the browser dApp now includes a Utopia object-discovery panel that can list owned objects and also query public Utopia storage units, gates, and network nodes for sample `item_id` values
+- the discovery panel now acts as a handoff surface into live hosted testing through direct `Open in Visitor` / `Open in Owner` actions
 - shared strike persistence is implemented through owner-defined strike networks
 - the UI supports three views:
   - `Full Detail` mode for judges/debug

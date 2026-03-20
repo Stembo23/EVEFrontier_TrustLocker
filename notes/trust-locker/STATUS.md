@@ -32,6 +32,11 @@
   - the current repo evidence does not prove a visitor-side Fuel debit and owner-controlled credit path
   - the owner-incentive fallback is the documented `perpetual_market` / `procurement_market` split
   - procurement mode uses the same storage unit's owner reserve for visitor-offered receipts
+- Launch-readiness clarification is now active:
+  - `perpetual_market` must hide the owner-claim panel
+  - `procurement_market` must show `Claimable by owner`
+  - discovery must hand off directly into live `view=visitor` / `view=owner` URLs
+  - hosted Utopia is only `owner-ready` after stock/claim workflow is integrated or explicitly blocked by the platform
 
 ## Implemented
 
@@ -68,7 +73,7 @@
 - Browser-side Utopia object-discovery panel that:
   - loads owned objects from a connected wallet
   - queries public Utopia storage units, gates, and network nodes directly
-  - surfaces candidate `item_id` values plus ready-made Utopia URLs
+  - surfaces candidate `item_id` values plus direct `Open in Visitor` / `Open in Owner` handoff actions
 - Phase 2 Utopia migration and in-game deployment checklist are documented in:
   - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md`
 - Cloudflare Pages deployment scripts now exist in:
@@ -140,6 +145,9 @@
 - Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like visitor/owner information layout, but it still needs a stronger asset/icon pass before calling those views finished.
 - Owner-incentive implementation is still open in code, but the docs now define the intended market-mode split and the Fuel-fee no-go result so the product story stays honest.
 - Hosted deployment and in-game custom URL cutover are documented and ready for a real Utopia storage-unit handoff.
+- Hosted Utopia now has two readiness stages:
+  - `browser read-ready`
+  - `browser owner-ready`
 - Phase 2 audit gate is partially complete:
   - internal review is documented
   - external deterministic Move scan is documented
@@ -148,6 +156,10 @@
 - Utopia migration still has one remaining live ownership milestone:
   - point a real owned Utopia storage unit at the hosted Barter Box app and validate `F` opening the in-game browser
 - Owned Utopia storage-unit cutover is still pending user-side control/permissions.
+- Owner stock/claim UX remains a launch blocker:
+  - policy is handled in the Barter Box UI
+  - stock/claim still rely on storage-unit inventory flow
+  - owned-Utopia cutover should not be called owner-ready until wallet-backed stock/claim is implemented or a platform limitation is documented
 - Final visitor and owner visual polish is still open and should stay treated as WIP until the next asset pass.
 
 ## Deferred v2

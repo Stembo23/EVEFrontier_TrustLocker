@@ -49,6 +49,10 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - The fallback owner-incentive design is a market-mode split:
   - `perpetual_market` for the current shelf-circulation behavior
   - `procurement_market` for visitor receipts that route into the same storage unit's owner reserve
+- Owner launch-readiness now depends on explicit stock/claim handling:
+  - `perpetual_market` hides the owner-claim panel
+  - `procurement_market` shows `Claimable by owner`
+  - owner testing is not complete until stock/claim flow is integrated or a platform limitation is documented
 
 ## Migration Stages
 
@@ -78,7 +82,11 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - public docs should state whether the active market mode is `perpetual_market` or `procurement_market`
   - public docs should state that Fuel fees are deferred until the payment path is proven
 - Keep hosted/Utopia routes free of local demo signer controls.
+- Treat this stage as `browser read-ready` until:
+  - discovery can hand off directly into live owner/visitor URLs
+  - a real `itemId` is being used in the hosted route
 - If writes fail in Utopia, record the exact failure and keep Stage B as read-only plus context validation until fixed.
+- Do not call this stage `browser owner-ready` until owner stock/claim flow is integrated or explicitly blocked by the platform.
 
 ### Stage C: Owned Utopia Cutover
 
@@ -117,6 +125,11 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm the app resolves the assembly context from a real `itemId`.
 - [ ] Confirm the Cloudflare Pages env vars for the Barter Box package/config are set.
 - [ ] Confirm the UI does not expose localnet-only demo signer controls in owner or visitor mode.
+- [ ] Confirm `Load public Utopia objects` offers direct `Open in Visitor` / `Open in Owner` handoff actions.
+- [ ] Confirm hosted owner/visitor routes stop showing the generic missing-`itemId` state after discovery handoff.
+- [ ] Confirm `perpetual_market` hides `Claimable by owner`.
+- [ ] Confirm `procurement_market` shows `Claimable by owner`.
+- [ ] Confirm owner stock/claim workflow is either integrated or explicitly documented as a platform blocker before calling the hosted app owner-ready.
 
 ### Utopia Cutover
 

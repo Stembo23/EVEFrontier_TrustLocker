@@ -275,6 +275,11 @@ button {
   grid-template-rows: 1fr;
 }
 
+.owner-rail-single {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr;
+}
+
 .full-rail {
   grid-template-rows: auto minmax(0, 1fr);
 }
@@ -586,6 +591,12 @@ button {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.discovery-actions .primary-action,
+.discovery-actions .secondary-action {
+  min-height: 34px;
+  padding: 6px 10px;
 }
 
 .signal-list {

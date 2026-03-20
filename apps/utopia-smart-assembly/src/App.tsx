@@ -195,7 +195,7 @@ function buildDraftFromForm(form: OwnerPolicyForm): LockerPolicyDraft {
 }
 
 function buildRiskLabel(policy: LockerPolicyDraft): string {
-  if (policy.marketMode === "procurement") return "Procurement reserve mode";
+  if (policy.marketMode === "procurement") return "Procurement claim mode";
   if (policy.useSharedPenalties) return "Federated trust network";
   if (policy.rivalMultiplierBps >= 13_000) return "Hostile rival pricing";
   if (policy.friendlyMultiplierBps < 10_000) return "Preferential friendly pricing";
@@ -208,7 +208,7 @@ function marketModeLabel(mode: MarketMode): string {
 
 function marketModeCopy(mode: MarketMode): string {
   return mode === "procurement"
-    ? "Visitor goods go to the owner reserve instead of back onto the public shelf."
+    ? "Visitor payments become claimable by the owner instead of returning to the public shelf."
     : "Visitor goods return to the public shelf so later visitors can trade for them.";
 }
 
@@ -277,6 +277,15 @@ function writeViewMode(mode: UiMode) {
   const url = new URL(window.location.href);
   url.searchParams.set("view", mode);
   window.history.replaceState({}, "", url);
+}
+
+function buildAssemblyViewUrl(itemId: string, tenant: string, view: UiMode): string {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  url.searchParams.set("tenant", tenant);
+  url.searchParams.set("itemId", itemId);
+  url.searchParams.set("view", view);
+  return url.toString();
 }
 
 function cycleViewMode(current: UiMode): UiMode {
@@ -647,6 +656,14 @@ function App() {
     setRefreshTick((value) => value + 1);
   }
 
+  function openCandidateInView(candidate: OwnedObjectCandidate, nextView: UiMode) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, nextView);
+    window.location.assign(
+      buildAssemblyViewUrl(candidate.itemId, candidate.tenant || "utopia", nextView),
+    );
+  }
+
   async function runWalletAction(
     label: string,
     action: () => Promise<string>,
@@ -951,6 +968,9 @@ function App() {
   const resolvedPreview = preview;
   const resolvedOwnerPolicyForm = ownerPolicyForm;
   const resolvedSharedNetworkPolicyForm = sharedNetworkPolicyForm;
+  const isProcurementMode =
+    resolvedOwnerPolicyForm?.marketMode === "procurement" ||
+    resolvedSnapshot.policy.marketMode === "procurement";
 
   const trustLabel = resolvedSnapshot.trustStatus === "frozen" ? "Frozen ruleset" : "Mutable ruleset";
   const ownerDraft = buildDraftFromForm(resolvedOwnerPolicyForm);
@@ -987,7 +1007,7 @@ function App() {
     : resolvedPreview.willStrike
       ? "Underpaying will add a strike and lock this locker temporarily."
       : resolvedSnapshot.policy.marketMode === "procurement"
-        ? "Accepted goods route to the owner reserve when the trade clears."
+        ? "Accepted goods become claimable by the owner when the trade clears."
         : "Published terms are satisfied for this exchange.";
   const networkPenaltyCopy =
     resolvedSnapshot.sharedPenalty.pricingPenaltyBps > 0
@@ -1424,6 +1444,36 @@ function App() {
             )}
           </div>
         </section>
+        {resolvedSnapshot.policy.marketMode === "procurement" ? (
+          <section className="workspace-card">
+            <div className="workspace-card-header">
+              <p className="section-label">Claimable by owner</p>
+              <p className="section-copy">
+                In procurement mode, visitor payments land here for the owner to collect later.
+              </p>
+            </div>
+            <div className="accepted-goods-list">
+              {resolvedSnapshot.ownerReserveInventory.length === 0 ? (
+                <p className="empty-state">No claimable receipts are available yet.</p>
+              ) : (
+                resolvedSnapshot.ownerReserveInventory.map((item) => (
+                  <div key={item.typeId} className="accepted-goods-row">
+                    <strong>{item.label}</strong>
+                    <span>qty {item.quantity}</span>
+                    <span>{formatVolume(item.volumeM3, item.quantity)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        ) : (
+          <section className="callout">
+            <p className="section-label">Perpetual circulation</p>
+            <p className="section-copy">
+              In perpetual mode, visitor payments return to the public shelf. Nothing accumulates separately for the owner.
+            </p>
+          </section>
+        )}
         <section className="workspace-card grow">
           <div className="workspace-card-header">
             <p className="section-label">Accepted in exchange</p>
@@ -1482,9 +1532,17 @@ function App() {
             })}
           </div>
         </section>
+        <section className="callout warning">
+          <p className="section-label">Launch blocker: stock and claim flow</p>
+          <p className="section-copy">
+            Stock shelf and claim receipts are not yet wired into this panel. For now they still rely on the storage-unit inventory flow. Hosted Utopia owner-ready stays open until wallet-backed stock and claim actions are implemented or proven impossible by the platform.
+          </p>
+        </section>
         <div className="metrics-grid">
           {renderMetricTile("Shelf lines", resolvedSnapshot.openInventory.length)}
-          {renderMetricTile("Owner reserve", resolvedSnapshot.ownerReserveInventory.length)}
+          {resolvedSnapshot.policy.marketMode === "procurement"
+            ? renderMetricTile("Claimable by owner", resolvedSnapshot.ownerReserveInventory.length)
+            : renderMetricTile("Shelf returns", "public circulation")}
           {renderMetricTile("Risk posture", buildRiskLabel(ownerDraft), "accent")}
         </div>
       </div>
@@ -1966,7 +2024,8 @@ function App() {
           ) : (
             ownedObjectCandidates.map((candidate) => {
               const candidateTenant = candidate.tenant || "utopia";
-              const utopiaUrl = `https://uat.dapps.evefrontier.com/?tenant=${candidateTenant}&itemId=${candidate.itemId}`;
+              const visitorUrl = buildAssemblyViewUrl(candidate.itemId, candidateTenant, "visitor");
+              const ownerUrl = buildAssemblyViewUrl(candidate.itemId, candidateTenant, "owner");
               return (
                 <li key={`${candidate.itemId}-${candidate.objectId ?? candidate.typeId}`}>
                   <strong>{candidate.name}</strong>
@@ -1974,7 +2033,24 @@ function App() {
                   <span>tenant: {candidateTenant}</span>
                   <span>type_id: {candidate.typeId}</span>
                   <span>source: {candidate.source}</span>
-                  <small>{utopiaUrl}</small>
+                  <div className="button-row discovery-actions">
+                    <button
+                      type="button"
+                      className="primary-action"
+                      onClick={() => openCandidateInView(candidate, "visitor")}
+                    >
+                      Open in Visitor
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      onClick={() => openCandidateInView(candidate, "owner")}
+                    >
+                      Open in Owner
+                    </button>
+                  </div>
+                  <small>{visitorUrl}</small>
+                  <small>{ownerUrl}</small>
                 </li>
               );
             })
@@ -2036,20 +2112,22 @@ function App() {
 
     if (isOwnerMode) {
       return (
-        <aside className="shell-panel left-rail owner-rail">
+        <aside className={`shell-panel left-rail ${isProcurementMode ? "owner-rail" : "owner-rail-single"}`}>
           {renderRailSection({
             title: "Offered on shelf",
             subtitle: "Current stock already loaded into this box for visitors to take.",
             items: resolvedSnapshot.openInventory,
             quantityLabel: "shelf",
           })}
-          {renderRailSection({
-            title: "Owner reserve",
-            subtitle:
-              "In procurement mode, goods visitors pay in land here for the owner to collect later.",
-            items: resolvedSnapshot.ownerReserveInventory,
-            quantityLabel: "reserve",
-          })}
+          {isProcurementMode
+            ? renderRailSection({
+                title: "Claimable by owner",
+                subtitle:
+                  "In procurement mode, goods visitors pay in land here for the owner to collect later.",
+                items: resolvedSnapshot.ownerReserveInventory,
+                quantityLabel: "reserve",
+              })
+            : null}
         </aside>
       );
     }
