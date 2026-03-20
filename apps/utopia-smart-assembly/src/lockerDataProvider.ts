@@ -186,7 +186,9 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
       }
     }
   } else if (input.tenant === "utopia" && !input.smartObjectError) {
-    notes.push("Hosted Utopia routing needs a real assembly itemId before live Barter Box state can be resolved.");
+    notes.push(
+      "Hosted Utopia needs a real assembly itemId. Open this page from a live assembly or add ?tenant=utopia&itemId=<assembly item id> to the URL.",
+    );
   } else if (!input.smartObjectError) {
     notes.push("No live runtime was selected, so the curated Barter Box snapshot remains active.");
   }

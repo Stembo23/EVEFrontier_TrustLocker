@@ -1005,7 +1005,10 @@ function App() {
     runtimeEnvironment === "localnet"
       ? "Localnet runtime context is not loaded yet."
       : lockerData?.notes.find(
-          (note) => note.includes("Hosted Utopia") || note.includes("connected wallet") || note.includes("config is incomplete"),
+          (note) =>
+            note.includes("Hosted Utopia") ||
+            note.includes("connected wallet") ||
+            note.includes("config is incomplete"),
         ) ?? "Live Utopia Barter Box state is not available yet.";
   const tradeBlockedReason = displayedCooldownActive
     ? `Trading locked while cooldown is active. ${displayedCooldownEndLabel}.`
@@ -1404,7 +1407,7 @@ function App() {
           <div className="workspace-card-header">
             <p className="section-label">Offered on shelf</p>
             <p className="section-copy">
-              Visitors can only take what is currently stocked on the shelf. Use normal storage-unit inventory flow to restock this box.
+              This is what visitors can currently take. The owner chooses it by stocking the storage unit itself, outside this panel.
             </p>
           </div>
           <div className="accepted-goods-list">
@@ -2036,13 +2039,14 @@ function App() {
         <aside className="shell-panel left-rail owner-rail">
           {renderRailSection({
             title: "Offered on shelf",
-            subtitle: "Current public stock visitors can take.",
+            subtitle: "Current stock already loaded into this box for visitors to take.",
             items: resolvedSnapshot.openInventory,
             quantityLabel: "shelf",
           })}
           {renderRailSection({
             title: "Owner reserve",
-            subtitle: "Procurement receipts stored inside this unit.",
+            subtitle:
+              "In procurement mode, goods visitors pay in land here for the owner to collect later.",
             items: resolvedSnapshot.ownerReserveInventory,
             quantityLabel: "reserve",
           })}
@@ -2194,13 +2198,18 @@ function App() {
 
   const showTradeActions = isVisitorMode || (isFullMode && fullWorkspaceTab === "trade");
   const showOwnerActions = isOwnerMode || (isFullMode && fullWorkspaceTab === "owner");
+  const idleStatusLabel = showTradeActions
+    ? "Trade status"
+    : showOwnerActions
+      ? "Owner status"
+      : "Status";
 
   function renderBottomBar() {
     return (
       <footer className="bottom-strip">
         <div className="bottom-status">
           <p className={`action-status ${actionState.status}`}>
-            {actionState.status === "idle" ? "Status" : inContextStatusLabel}
+            {actionState.status === "idle" ? idleStatusLabel : inContextStatusLabel}
           </p>
           <p className="status-copy">{bottomMessage}</p>
           {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
