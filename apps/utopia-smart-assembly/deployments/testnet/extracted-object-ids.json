@@ -1,0 +1,12 @@
+{
+  "network": "testnet",
+  "world": {
+    "packageId": "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+    "serverAddressRegistry": "0x9a9f2f7d1b8cf100feb532223aa6c38451edb05406323af5054f9d974555708b",
+    "adminAcl": "0xa8655c6721967e631d8fd157bc88f7943c5e1263335c4ab553247cd3177d4e86",
+    "objectRegistry": "0xc2b969a72046c47e24991d69472afb2216af9e91caf802684514f39706d7dc57",
+    "energyConfig": "0x9285364e8104c04380d9cc4a001bbdfc81a554aad441c2909c2d3bd52a0c9c62",
+    "fuelConfig": "0x0f354c803af170ac0d1ac9068625c6321996b3013dc67bdaf14d06f93fa1671f",
+    "gateConfig": "0x69a392c514c4ca6d771d8aa8bf296d4d7a021e244e792eb6cd7a0c61047fc62b"
+  }
+}

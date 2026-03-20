@@ -518,12 +518,9 @@ export function runSuiPublish(
                   resolveLocalnetPubfilePath(),
                   "--json",
               ]
-            : ["client", "publish", packagePath, "--json"];
+            : ["client", "--client.env", network, "publish", packagePath, "--json"];
     if (network !== "localnet" && opts?.withUnpublishedDependencies) {
         args.push("--with-unpublished-dependencies");
-    }
-    if (network !== "localnet") {
-        args.unshift("--client.env", network);
     }
     const outputRaw = execFileSync("sui", args, {
         cwd: network === "localnet" ? packagePath : APP_ROOT,
