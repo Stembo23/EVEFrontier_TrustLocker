@@ -100,6 +100,37 @@ type ViewDefinition = {
   description: string;
 };
 
+type VisitorWorkspaceTab = "trade" | "terms" | "status";
+type OwnerWorkspaceTab = "goods" | "terms" | "network" | "publish";
+type FullWorkspaceTab = "overview" | "trade" | "owner" | "signals" | "proof";
+type FullRailPanel = "shelf" | "hold" | "reserve";
+
+type WorkspaceTabDefinition<T extends string> = {
+  id: T;
+  label: string;
+};
+
+const VISITOR_WORKSPACE_TABS: WorkspaceTabDefinition<VisitorWorkspaceTab>[] = [
+  { id: "trade", label: "Trade" },
+  { id: "terms", label: "Terms" },
+  { id: "status", label: "Status" },
+];
+
+const OWNER_WORKSPACE_TABS: WorkspaceTabDefinition<OwnerWorkspaceTab>[] = [
+  { id: "goods", label: "Goods" },
+  { id: "terms", label: "Terms" },
+  { id: "network", label: "Network" },
+  { id: "publish", label: "Publish" },
+];
+
+const FULL_WORKSPACE_TABS: WorkspaceTabDefinition<FullWorkspaceTab>[] = [
+  { id: "overview", label: "Overview" },
+  { id: "trade", label: "Trade" },
+  { id: "owner", label: "Owner" },
+  { id: "signals", label: "Signals" },
+  { id: "proof", label: "Proof" },
+];
+
 function numbersToCsv(values: number[]): string {
   return values.join(", ");
 }
@@ -399,6 +430,10 @@ function App() {
 
   const [lockerData, setLockerData] = useState<LockerDataEnvelope | null>(null);
   const [viewMode, setViewMode] = useState<UiMode>(readInitialViewMode);
+  const [visitorWorkspaceTab, setVisitorWorkspaceTab] = useState<VisitorWorkspaceTab>("trade");
+  const [ownerWorkspaceTab, setOwnerWorkspaceTab] = useState<OwnerWorkspaceTab>("goods");
+  const [fullWorkspaceTab, setFullWorkspaceTab] = useState<FullWorkspaceTab>("overview");
+  const [fullRailPanel, setFullRailPanel] = useState<FullRailPanel>("shelf");
   const [isResolvingData, setIsResolvingData] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   const [ownerPolicyForm, setOwnerPolicyForm] = useState<OwnerPolicyForm | null>(null);
@@ -575,6 +610,12 @@ function App() {
     acceptedItems.find((item) => item.typeId === offeredTypeId) ??
     snapshot?.visitorInventory[0] ??
     acceptedItems[0];
+  const requestedShelfEntry =
+    snapshot?.openInventory.find((item) => item.typeId === requestedTypeId) ??
+    snapshot?.openInventory[0];
+  const offeredHoldEntry =
+    snapshot?.visitorInventory.find((item) => item.typeId === offeredTypeId) ??
+    snapshot?.visitorInventory[0];
 
   const preview = useMemo(() => {
     if (!snapshot || !requestedItem || !offeredItem) return null;
@@ -990,797 +1031,716 @@ function App() {
     );
   }
 
+  const currentPublishedPolicy = {
+    ...resolvedSnapshot.policy,
+    isFrozen: false,
+  };
+  const currentSharedPolicy = {
+    scopeId: resolvedSnapshot.policy.strikeScopeId,
+    pricingPenaltyPerStrikeBps: resolvedSnapshot.sharedPenalty.policy.pricingPenaltyPerStrikeBps,
+    maxPricingPenaltyBps: resolvedSnapshot.sharedPenalty.policy.maxPricingPenaltyBps,
+    lockoutStrikeThreshold: resolvedSnapshot.sharedPenalty.policy.lockoutStrikeThreshold,
+    networkLockoutDurationMs: resolvedSnapshot.sharedPenalty.policy.networkLockoutDurationMs,
+    isActive: resolvedSnapshot.sharedPenalty.policy.isActive,
+  };
+  const hasPendingPolicyChanges = JSON.stringify(ownerDraft) !== JSON.stringify(currentPublishedPolicy);
+  const hasPendingNetworkChanges =
+    JSON.stringify(resolvedSharedNetworkPolicyForm) !== JSON.stringify(currentSharedPolicy);
+
   function renderActionSummary(compact = false) {
     if (actionState.status === "idle" && compact) return null;
     return (
-      <div className={compact ? "inline-status" : "status-trace"}>
-        <p className={`action-status ${actionState.status}`}>{compact ? inContextStatusLabel : actionState.label}</p>
-        <p className="support-copy">{actionState.message ?? "No wallet action has been attempted yet."}</p>
-        {actionState.digest ? <p className="support-copy">Digest: {actionState.digest}</p> : null}
+      <div className={compact ? "status-block compact" : "status-block"}>
+        <p className={`action-status ${actionState.status}`}>
+          {compact ? inContextStatusLabel : actionState.label}
+        </p>
+        <p className="status-copy">{actionState.message ?? "No wallet action has been attempted yet."}</p>
+        {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
       </div>
     );
   }
 
-  function renderAssemblyCard(props: { step?: string; description: string; compact: boolean }) {
+  function renderWorkspaceTabs<T extends string>(
+    tabs: WorkspaceTabDefinition<T>[],
+    activeTab: T,
+    setActiveTab: (tab: T) => void,
+  ) {
     return (
-      <article className="card assembly-card">
-        <StepHeader
-          step={props.step}
-          title="Assembly Context"
-          description={props.description}
-        />
-        <div className="assembly-hero">
-          <div className="assembly-visual" aria-hidden="true">
-            <span className="assembly-core" />
-            <span className="assembly-fin assembly-fin-a" />
-            <span className="assembly-fin assembly-fin-b" />
-            <span className="assembly-fin assembly-fin-c" />
-          </div>
-          <div className="assembly-meta">
-            <h2>{displayedAssemblyName}</h2>
-            <div className="assembly-badges">
-              <span className={resolvedSnapshot.trustStatus === "frozen" ? "trust-pill frozen" : "trust-pill mutable"}>
-                {trustLabel}
-              </span>
-              <span className="runtime-pill">{runtimeLabel}</span>
-              <span className={`runtime-pill ${resolvedSnapshot.policy.isActive ? "online" : "offline"}`}>
-                {operatorStateLabel}
-              </span>
+      <div className="workspace-tabs" role="tablist">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={tab.id === activeTab ? "workspace-tab active" : "workspace-tab"}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function renderMetricTile(label: string, value: ReactNode, tone: "default" | "warning" | "accent" = "default") {
+    return (
+      <div className={`metric-tile ${tone}`}>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    );
+  }
+
+  function renderAssetRows(
+    items: LockerDataEnvelope["snapshot"]["openInventory"],
+    quantityLabel: "shelf" | "hold" | "reserve",
+    selectedTypeId?: number,
+    onSelect?: (typeId: number) => void,
+  ) {
+    if (items.length === 0) {
+      return <p className="empty-state">No items available.</p>;
+    }
+
+    return items.map((item) => {
+      const active = selectedTypeId === item.typeId;
+      const content = (
+        <>
+          <div className="asset-row-main">
+            <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
+            <div className="asset-copy">
+              <strong>{item.label}</strong>
+              <small>{quantityLabel} {item.quantity}</small>
             </div>
-            <p className="trust-copy">
-              {props.compact
-                ? compactTradeCopy
-                : "The unit identity, trust status, and runtime come first. Everything else hangs off this object context."}
-            </p>
           </div>
-        </div>
-        <dl className="fact-grid">
-          <div>
-            <dt>Assembly type</dt>
-            <dd>{ASSEMBLY_TYPE_LABEL}</dd>
+          <div className="asset-row-meta">
+            <span>{item.points} pts</span>
+            <span>{formatVolume(item.volumeM3, item.quantity)}</span>
           </div>
-          <div>
-            <dt>Owner</dt>
-              <dd>{resolvedSnapshot.owner.label}</dd>
+        </>
+      );
+
+      if (!onSelect) {
+        return (
+          <div key={item.typeId} className="asset-row static">
+            {content}
           </div>
-          <div>
-            <dt>Assembly ID</dt>
-            <dd>{compactAddress(displayedAssemblyId, props.compact)}</dd>
-          </div>
-          <div>
-            <dt>Wallet</dt>
-            <dd>{account?.address ? compactAddress(account.address, props.compact) : "Not connected"}</dd>
-          </div>
-          <div>
-            <dt>Tenant</dt>
-            <dd>{runtime?.tenant ?? tenant}</dd>
-          </div>
-          <div>
-            <dt>Wallet network</dt>
-            <dd>{currentNetwork}</dd>
-          </div>
-        </dl>
-        {showSupportCopy ? (
-          <div className="connection-note">
-            {loading && <span>Reading selected smart object...</span>}
-            {!loading && lockerData?.notes.map((note) => <span key={note}>{note}</span>)}
-          </div>
-        ) : null}
-      </article>
-    );
+        );
+      }
+
+      return (
+        <button
+          key={item.typeId}
+          type="button"
+          className={active ? "asset-row active" : "asset-row"}
+          onClick={() => onSelect(item.typeId)}
+        >
+          {content}
+        </button>
+      );
+    });
   }
 
-  function renderTermsCard(props: { step?: string; description: string; compact: boolean }) {
-    return (
-      <article className="card summary-card">
-        <StepHeader
-          step={props.step}
-          title="Published Terms"
-          description={props.description}
-        />
-        <div className="owner-controls">
-          <div>
-            <span>Accepted goods</span>
-            <strong>{resolvedSnapshot.policy.acceptedItems.length}</strong>
-          </div>
-          <div>
-            <span>Risk posture</span>
-            <strong>{buildRiskLabel(resolvedSnapshot.policy)}</strong>
-          </div>
-          <div>
-            <span>Cooldown</span>
-            <strong>{resolvedSnapshot.policy.cooldownMs / 1000}s</strong>
-          </div>
-          <div>
-            <span>Market mode</span>
-            <strong>{marketModeSummary}</strong>
-          </div>
-          <div>
-            <span>Friendly</span>
-            <strong>{resolvedSnapshot.policy.friendlyMultiplierBps / 100}%</strong>
-          </div>
-          <div>
-            <span>Rival</span>
-            <strong>{resolvedSnapshot.policy.rivalMultiplierBps / 100}%</strong>
-          </div>
-          <div>
-            <span>Shared network</span>
-            <strong>{resolvedSnapshot.policy.useSharedPenalties ? `scope ${resolvedSnapshot.policy.strikeScopeId}` : "isolated"}</strong>
-          </div>
-          <div>
-            <span>Fuel fee</span>
-            <strong>{resolvedSnapshot.policy.fuelFeeUnits || "off"}</strong>
-          </div>
-        </div>
-        {!props.compact ? (
-          <ul className="policy-list">
-            <li>Friendly tribes: {resolvedSnapshot.policy.friendlyTribes.join(", ") || "none"}</li>
-            <li>Rival tribes: {resolvedSnapshot.policy.rivalTribes.join(", ") || "none"}</li>
-            <li>Market mode: {marketModeSummary} | {marketModeDescription}</li>
-            <li>{fuelFeeCopy}</li>
-            <li>Shared pricing penalty: {(resolvedSnapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(2)}%</li>
-            <li>Network state: {resolvedSnapshot.sharedPenalty.policy.isActive ? "active" : "inactive"}</li>
-          </ul>
-        ) : null}
-      </article>
-    );
-  }
-
-  function renderInventoryCard(props: {
-    step?: string;
+  function renderRailSection(props: {
     title: string;
-    description: string;
+    subtitle: string;
     items: LockerDataEnvelope["snapshot"]["openInventory"];
-    empty: string;
-    quantityLabel: "open" | "owned" | "reserve";
-    compact: boolean;
+    quantityLabel: "shelf" | "hold" | "reserve";
+    selectedTypeId?: number;
+    onSelect?: (typeId: number) => void;
   }) {
     return (
-      <article className="card inventory-card">
-        <StepHeader step={props.step} title={props.title} description={props.description} />
-        <div className="item-table">
-          {props.items.length === 0 ? (
-            <p className="empty-state">{props.empty}</p>
-          ) : (
-            props.items.map((item) => (
-              <div key={item.typeId} className="item-row">
-                <div className="item-main">
-                  <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
-                  <strong>{item.label}</strong>
-                  {!props.compact ? <p>{item.note}</p> : null}
-                </div>
-                <div className="item-meta">
-                  {!props.compact ? <span>type_id {item.typeId}</span> : null}
-                  <span>{item.quantity} {props.quantityLabel}</span>
-                  <span>{item.points} pts</span>
-                  <span>{formatVolume(item.volumeM3, item.quantity)}</span>
-                </div>
-              </div>
-            ))
+      <section className="rail-section">
+        <div className="rail-section-header">
+          <p className="section-label">{props.title}</p>
+          <p className="section-copy">{props.subtitle}</p>
+        </div>
+        <div className="rail-scroll">
+          {renderAssetRows(props.items, props.quantityLabel, props.selectedTypeId, props.onSelect)}
+        </div>
+      </section>
+    );
+  }
+
+  function renderVisitorTradeWorkspace(showExtendedMetrics: boolean) {
+    return (
+      <div className="workspace-stack">
+        <div className="selection-grid">
+          <section className="workspace-card">
+            <div className="workspace-card-header">
+              <p className="section-label">Request</p>
+              <p className="section-copy">Click a shelf item on the left to change this selection.</p>
+            </div>
+            <div className="selection-summary">
+              <strong>{resolvedPreview.requestedItem.label}</strong>
+              <span>
+                {requestedShelfEntry?.quantity ?? 0} shelf | {resolvedPreview.requestedItem.points} pts |{" "}
+                {formatVolume(resolvedPreview.requestedItem.volumeM3, 1)}
+              </span>
+            </div>
+            <label className="field-block">
+              <span>Quantity</span>
+              <input
+                type="number"
+                min={1}
+                value={requestedQuantity}
+                onChange={(event) =>
+                  startTransition(() => setRequestedQuantity(Math.max(1, Number(event.target.value) || 1)))
+                }
+              />
+            </label>
+          </section>
+
+          <section className="workspace-card">
+            <div className="workspace-card-header">
+              <p className="section-label">Offer</p>
+              <p className="section-copy">Click a hold item on the left to load it into the composer.</p>
+            </div>
+            <div className="selection-summary">
+              <strong>{resolvedPreview.offeredItem.label}</strong>
+              <span>
+                {offeredHoldEntry?.quantity ?? 0} hold | {resolvedPreview.offeredItem.points} pts |{" "}
+                {formatVolume(resolvedPreview.offeredItem.volumeM3, 1)}
+              </span>
+            </div>
+            <label className="field-block">
+              <span>Quantity</span>
+              <input
+                type="number"
+                min={0}
+                value={offeredQuantity}
+                onChange={(event) =>
+                  startTransition(() => setOfferedQuantity(Math.max(0, Number(event.target.value) || 0)))
+                }
+              />
+            </label>
+          </section>
+        </div>
+
+        <div className="metrics-grid">
+          {renderMetricTile("Request points", resolvedPreview.effectiveRequestedPoints, "accent")}
+          {renderMetricTile("Offer points", resolvedPreview.offeredPoints)}
+          {renderMetricTile(
+            "Deficit",
+            resolvedPreview.deficitPoints,
+            resolvedPreview.deficitPoints > 0 ? "warning" : "default",
           )}
+          {renderMetricTile(
+            "Request volume",
+            formatVolume(resolvedPreview.requestedItem.volumeM3, resolvedPreview.requestedQuantity),
+          )}
+          {renderMetricTile(
+            "Offer volume",
+            formatVolume(resolvedPreview.offeredItem.volumeM3, resolvedPreview.offeredQuantity),
+          )}
+          {renderMetricTile(
+            "Fuel fee",
+            resolvedPreview.fuelFeeUnits > 0 ? `${resolvedPreview.fuelFeeUnits} Fuel` : "0",
+          )}
+          {showExtendedMetrics
+            ? renderMetricTile("Base request", resolvedPreview.baseRequestedPoints)
+            : null}
+          {showExtendedMetrics
+            ? renderMetricTile(
+                "Bucket multiplier",
+                `${(resolvedPreview.pricingMultiplierBps / 100).toFixed(2)}%`,
+              )
+            : null}
+          {showExtendedMetrics
+            ? renderMetricTile(
+                "Network penalty",
+                `${(resolvedPreview.sharedPricingPenaltyBps / 100).toFixed(2)}%`,
+              )
+            : null}
         </div>
-      </article>
+
+        <section className={resolvedPreview.willStrike ? "callout warning" : "callout"}>
+          <p className="section-label">
+            {resolvedPreview.willStrike ? "Strike warning" : "Trade state"}
+          </p>
+          <p className="section-copy">{compactTradeCopy}</p>
+        </section>
+      </div>
     );
   }
 
-  function renderTradeCard(props: { step?: string; description: string; compact: boolean }) {
+  function renderTermsWorkspace(compact = false) {
     return (
-      <article className="card trade-card">
-        <StepHeader step={props.step} title="Trade Console" description={props.description} />
-        <div className="owner-controls trade-summary-grid">
-          <div>
-            <span>Market mode</span>
-            <strong>{marketModeSummary}</strong>
-          </div>
-          <div>
-            <span>Detected bucket</span>
-            <strong>{resolvedSnapshot.visitor.relationshipBucket}</strong>
-          </div>
-          <div>
-            <span>Local strikes</span>
-            <strong>{resolvedSnapshot.visitor.localStrikeCount}</strong>
-          </div>
-          <div>
-            <span>Shared strikes</span>
-            <strong>{resolvedSnapshot.sharedPenalty.penalties.strikeCount}</strong>
-          </div>
-          <div>
-            <span>Local cooldown</span>
-            <strong>{displayedCooldownActive ? displayedCooldownEndLabel : "clear"}</strong>
-          </div>
-          <div>
-            <span>Network lockout</span>
-            <strong>{displayedSharedLockoutActive ? displayedSharedLockoutLabel : "clear"}</strong>
-          </div>
-          <div>
-            <span>Network penalty</span>
-            <strong>{networkPenaltyCopy}</strong>
-          </div>
-          <div>
-            <span>Fuel fee</span>
-            <strong>{fuelFeeCopy}</strong>
-          </div>
+      <div className="workspace-stack">
+        <div className="metrics-grid">
+          {renderMetricTile("Market mode", marketModeSummary, "accent")}
+          {renderMetricTile("Cooldown", `${resolvedSnapshot.policy.cooldownMs / 1000}s`)}
+          {renderMetricTile("Friendly", `${resolvedSnapshot.policy.friendlyMultiplierBps / 100}%`)}
+          {renderMetricTile("Rival", `${resolvedSnapshot.policy.rivalMultiplierBps / 100}%`)}
+          {renderMetricTile(
+            "Shared network",
+            resolvedSnapshot.policy.useSharedPenalties
+              ? `scope ${resolvedSnapshot.policy.strikeScopeId}`
+              : "isolated",
+          )}
+          {renderMetricTile("Fuel fee", resolvedSnapshot.policy.fuelFeeUnits || "off")}
         </div>
-        {props.compact ? <p className="trade-copy">{marketModeDescription}</p> : null}
-        <div className="trade-grid">
-          <label>
-            Request item
-            <select
-              value={requestedTypeId}
-              onChange={(event) =>
-                startTransition(() => setRequestedTypeId(Number(event.target.value)))
-              }
-            >
-              {resolvedSnapshot.openInventory.map((item) => (
-                <option key={item.typeId} value={item.typeId}>
-                  {item.label} | {item.quantity} shelf
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Request qty
-            <input
-              type="number"
-              min={1}
-              value={requestedQuantity}
-              onChange={(event) =>
-                startTransition(() => setRequestedQuantity(Math.max(1, Number(event.target.value) || 1)))
-              }
-            />
-          </label>
-          <label>
-            Offer item
-            <select
-              value={offeredTypeId}
-              onChange={(event) =>
-                startTransition(() => setOfferedTypeId(Number(event.target.value)))
-              }
-            >
-              {resolvedSnapshot.visitorInventory.map((item) => (
-                <option key={item.typeId} value={item.typeId}>
-                  {item.label} | {item.quantity} hold
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Offer qty
-            <input
-              type="number"
-              min={0}
-              value={offeredQuantity}
-              onChange={(event) =>
-                startTransition(() => setOfferedQuantity(Math.max(0, Number(event.target.value) || 0)))
-              }
-            />
-          </label>
-        </div>
-
-        <div className={resolvedPreview.willStrike ? "preview-card warning" : "preview-card safe"}>
-          <p className="preview-pill">
-            {resolvedPreview.willStrike ? "Underpaying: strike + cooldown" : "Fair trade"}
-          </p>
-          <p className="preview-detail">
-            {props.compact
-              ? compactTradeCopy
-              : "This preview mirrors the on-chain math using the published policy, detected bucket, and any shared penalty already attached to the visitor."}
-          </p>
-          <div className="preview-metrics">
-            <div>
-              <span>Request total</span>
-              <strong>{resolvedPreview.effectiveRequestedPoints}</strong>
-            </div>
-            {!props.compact ? (
-              <div>
-                <span>Base request</span>
-                <strong>{resolvedPreview.baseRequestedPoints}</strong>
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Accepted goods</p>
+            <p className="section-copy">Published items and point values.</p>
+          </div>
+          <div className="accepted-goods-list">
+            {resolvedSnapshot.policy.acceptedItems.map((item) => (
+              <div key={item.typeId} className="accepted-goods-row">
+                <strong>{item.label}</strong>
+                <span>{item.points} pts</span>
+                <span>{formatVolume(item.volumeM3, 1)}</span>
               </div>
-            ) : null}
-            <div>
-              <span>Offer total</span>
-              <strong>{resolvedPreview.offeredPoints}</strong>
-            </div>
-            <div>
-              <span>Request volume</span>
-              <strong>{formatVolume(resolvedPreview.requestedItem.volumeM3, resolvedPreview.requestedQuantity)}</strong>
-            </div>
-            <div>
-              <span>Offer volume</span>
-              <strong>{formatVolume(resolvedPreview.offeredItem.volumeM3, resolvedPreview.offeredQuantity)}</strong>
-            </div>
-            <div>
-              <span>Deficit</span>
-              <strong>{resolvedPreview.deficitPoints}</strong>
-            </div>
-            <div>
-              <span>Fuel fee</span>
-              <strong>{resolvedPreview.fuelFeeUnits > 0 ? `${resolvedPreview.fuelFeeUnits} Fuel` : "0"}</strong>
-            </div>
-            {!props.compact ? (
-              <>
-                <div>
-                  <span>Bucket multiplier</span>
-                  <strong>{(resolvedPreview.pricingMultiplierBps / 100).toFixed(2)}%</strong>
-                </div>
-                <div>
-                  <span>Network penalty</span>
-                  <strong>{(resolvedPreview.sharedPricingPenaltyBps / 100).toFixed(2)}%</strong>
-                </div>
-                <div>
-                  <span>Strike scope</span>
-                  <strong>{resolvedPreview.sharedPenaltyScopeId || "isolated"}</strong>
-                </div>
-              </>
-            ) : null}
+            ))}
           </div>
-        </div>
-
-        {tradeBlockedReason ? (
-          <div className="cooldown-callout">
-            <p className="preview-pill">Trade locked</p>
-            <p className="preview-detail">{tradeBlockedReason}</p>
-          </div>
-        ) : null}
-
-        <div className="action-row">
-          <button
-            className="primary-action"
-            disabled={Boolean(tradeBlockedReason)}
-            onClick={() => void handleTrade()}
-          >
-            {tradeButtonLabel}
-          </button>
-          <button className="secondary-action" onClick={() => void refreshLockerContext()}>
-            Refresh
-          </button>
-        </div>
-        {props.compact ? renderActionSummary(true) : null}
-        {!props.compact && showSupportCopy ? (
-          <>
-            <p className="support-copy">
-              Trading uses the visitor path only. The owner does not transfer goods directly; visitors trade against the open shelf inventory inside the unit.
-            </p>
-            <p className="support-copy">
-              {marketModeDescription}
-            </p>
-            <p className="support-copy">
-              Cooldown and shared-network lockout are surfaced separately so the user can tell whether the block is local to this box or persistent across a strike network.
-            </p>
-          </>
-        ) : null}
-      </article>
+        </section>
+        <section className="callout">
+          <p className="section-label">Mode behavior</p>
+          <p className="section-copy">
+            {compact ? marketModeDescription : `${marketModeDescription} ${fuelFeeCopy}.`}
+          </p>
+        </section>
+      </div>
     );
   }
 
-  function renderOwnerCard(props: { step?: string; description: string; compact: boolean }) {
+  function renderStatusWorkspace() {
     return (
-      <article className="card owner-card">
-        <StepHeader step={props.step} title="Owner Console" description={props.description} />
+      <div className="workspace-stack">
+        <div className="metrics-grid">
+          {renderMetricTile("Bucket", resolvedSnapshot.visitor.relationshipBucket, "accent")}
+          {renderMetricTile("Local strikes", resolvedSnapshot.visitor.localStrikeCount)}
+          {renderMetricTile(
+            "Local cooldown",
+            displayedCooldownActive ? displayedCooldownEndLabel : "clear",
+            displayedCooldownActive ? "warning" : "default",
+          )}
+          {renderMetricTile("Shared strikes", resolvedSnapshot.sharedPenalty.penalties.strikeCount)}
+          {renderMetricTile(
+            "Network lock",
+            displayedSharedLockoutActive ? displayedSharedLockoutLabel : "clear",
+            displayedSharedLockoutActive ? "warning" : "default",
+          )}
+          {renderMetricTile("Penalty", networkPenaltyCopy)}
+        </div>
+        {renderActionSummary(false)}
+      </div>
+    );
+  }
 
-        <div className="owner-stage-grid">
-          <div className="owner-stage">
-            <p className="preview-pill">{props.compact ? "1. Confirm unit" : "Current box state"}</p>
-            <div className="owner-controls compact">
-              <div>
-                <span>Trust status</span>
-                <strong>{trustLabel}</strong>
-              </div>
-              <div>
-                <span>Policy status</span>
-                <strong>{resolvedSnapshot.policy.isActive ? "active" : "inactive"}</strong>
-              </div>
-              <div>
-                <span>Owner wallet</span>
-                <strong>{ownerActor ? compactAddress(ownerActor.senderAddress, props.compact) : "not ready"}</strong>
-              </div>
-            </div>
+  function renderOwnerGoodsWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="workspace-card grow">
+          <div className="workspace-card-header">
+            <p className="section-label">Accepted goods</p>
+            <p className="section-copy">Enable goods and set their point value inline.</p>
           </div>
-
-          <div className="owner-stage">
-            <p className="preview-pill">{props.compact ? "2. Choose accepted goods" : "Accepted goods"}</p>
-            <div className="catalog-editor">
-              {TRUST_LOCKER_CATALOG.map((item) => {
-                const enabled = resolvedOwnerPolicyForm.enabledTypeIds.includes(item.typeId);
-                return (
-                  <label key={item.typeId} className={enabled ? "catalog-row enabled" : "catalog-row"}>
-                    <span className="catalog-main">
-                      <input
-                        type="checkbox"
-                        checked={enabled}
-                        onChange={(event) =>
-                          setOwnerPolicyForm((current) => {
-                            if (!current) return current;
-                            const nextEnabled = event.target.checked
-                              ? [...current.enabledTypeIds, item.typeId]
-                              : current.enabledTypeIds.filter((typeId) => typeId !== item.typeId);
-                            return {
-                              ...current,
-                              enabledTypeIds: Array.from(new Set(nextEnabled)),
-                            };
-                          })
-                        }
-                      />
-                      <span>
-                        <strong>{item.label}</strong>
-                        <small>{props.compact ? `${item.volumeM3} m3` : `type_id ${item.typeId}`}</small>
-                      </span>
-                    </span>
+          <div className="catalog-editor">
+            {TRUST_LOCKER_CATALOG.map((item) => {
+              const enabled = resolvedOwnerPolicyForm.enabledTypeIds.includes(item.typeId);
+              return (
+                <label key={item.typeId} className={enabled ? "catalog-row enabled" : "catalog-row"}>
+                  <span className="catalog-main">
                     <input
-                      type="number"
-                      min={1}
-                      disabled={!enabled}
-                  value={resolvedOwnerPolicyForm.pointsByTypeId[item.typeId] ?? item.points}
+                      type="checkbox"
+                      checked={enabled}
                       onChange={(event) =>
-                        setOwnerPolicyForm((current) =>
-                          current
-                            ? {
-                                ...current,
-                                pointsByTypeId: {
-                                  ...current.pointsByTypeId,
-                                  [item.typeId]: Math.max(1, Number(event.target.value) || 1),
-                                },
-                              }
-                            : current,
-                        )
+                        setOwnerPolicyForm((current) => {
+                          if (!current) return current;
+                          const nextEnabled = event.target.checked
+                            ? [...current.enabledTypeIds, item.typeId]
+                            : current.enabledTypeIds.filter((typeId) => typeId !== item.typeId);
+                          return {
+                            ...current,
+                            enabledTypeIds: Array.from(new Set(nextEnabled)),
+                          };
+                        })
                       }
                     />
-                  </label>
-                );
-              })}
-            </div>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{formatVolume(item.volumeM3, 1)} | type_id {item.typeId}</small>
+                    </span>
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    disabled={!enabled}
+                    value={resolvedOwnerPolicyForm.pointsByTypeId[item.typeId] ?? item.points}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              pointsByTypeId: {
+                                ...current.pointsByTypeId,
+                                [item.typeId]: Math.max(1, Number(event.target.value) || 1),
+                              },
+                            }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+              );
+            })}
           </div>
+        </section>
+        <div className="metrics-grid">
+          {renderMetricTile("Shelf lines", resolvedSnapshot.openInventory.length)}
+          {renderMetricTile("Reserve lines", resolvedSnapshot.ownerReserveInventory.length)}
+          {renderMetricTile("Risk posture", buildRiskLabel(ownerDraft), "accent")}
         </div>
+      </div>
+    );
+  }
 
-        <div className="owner-stage-grid">
-          <div className="owner-stage">
-            <p className="preview-pill">{props.compact ? "3. Set trade terms" : "Trade terms"}</p>
-            <div className="trade-grid">
-              <label>
-                Friendly tribes
-                <input
-                  value={resolvedOwnerPolicyForm.friendlyTribesText}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current ? { ...current, friendlyTribesText: event.target.value } : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Rival tribes
-                <input
-                  value={resolvedOwnerPolicyForm.rivalTribesText}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current ? { ...current, rivalTribesText: event.target.value } : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Friendly multiplier (bps)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedOwnerPolicyForm.friendlyMultiplierBps}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? { ...current, friendlyMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Rival multiplier (bps)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedOwnerPolicyForm.rivalMultiplierBps}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? { ...current, rivalMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Market mode
-                <select
-                  value={resolvedOwnerPolicyForm.marketMode}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? {
-                            ...current,
-                            marketMode: event.target.value === "procurement" ? "procurement" : "perpetual",
-                          }
-                        : current,
-                    )
-                  }
-                >
-                  <option value="perpetual">Perpetual Market</option>
-                  <option value="procurement">Procurement Market</option>
-                </select>
-              </label>
-              <label>
-                Trade fee (Fuel)
-                <input
-                  type="number"
-                  min={0}
-                  disabled
-                  value={resolvedOwnerPolicyForm.fuelFeeUnits}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? { ...current, fuelFeeUnits: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Cooldown (ms)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedOwnerPolicyForm.cooldownMs}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? { ...current, cooldownMs: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label className="checkbox-row">
-                <span>Policy active</span>
-                <input
-                  type="checkbox"
-                  checked={resolvedOwnerPolicyForm.isActive}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current ? { ...current, isActive: event.target.checked } : current,
-                    )
-                  }
-                />
-              </label>
-            </div>
+  function renderOwnerTermsWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Trade terms</p>
+            <p className="section-copy">Keep the copy short and the rules explicit.</p>
           </div>
-
-          <div className="owner-stage">
-            <p className="preview-pill">{props.compact ? "4. Set shared penalty behavior" : "Shared penalty network"}</p>
-            <div className="trade-grid">
-              <label className="checkbox-row">
-                <span>Use shared penalties</span>
-                <input
-                  type="checkbox"
-                  checked={resolvedOwnerPolicyForm.useSharedPenalties}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current ? { ...current, useSharedPenalties: event.target.checked } : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Strike scope ID
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedOwnerPolicyForm.strikeScopeId}
-                  onChange={(event) =>
-                    setOwnerPolicyForm((current) =>
-                      current
-                        ? { ...current, strikeScopeId: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Penalty / strike (bps)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps}
-                  onChange={(event) =>
-                    setSharedNetworkPolicyForm((current) =>
-                      current
-                        ? {
-                            ...current,
-                            pricingPenaltyPerStrikeBps: Math.max(0, Number(event.target.value) || 0),
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Max penalty (bps)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedSharedNetworkPolicyForm.maxPricingPenaltyBps}
-                  onChange={(event) =>
-                    setSharedNetworkPolicyForm((current) =>
-                      current
-                        ? { ...current, maxPricingPenaltyBps: Math.max(0, Number(event.target.value) || 0) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Lockout threshold
-                <input
-                  type="number"
-                  min={1}
-                  value={resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}
-                  onChange={(event) =>
-                    setSharedNetworkPolicyForm((current) =>
-                      current
-                        ? { ...current, lockoutStrikeThreshold: Math.max(1, Number(event.target.value) || 1) }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Lockout duration (ms)
-                <input
-                  type="number"
-                  min={0}
-                  value={resolvedSharedNetworkPolicyForm.networkLockoutDurationMs}
-                  onChange={(event) =>
-                    setSharedNetworkPolicyForm((current) =>
-                      current
-                        ? {
-                            ...current,
-                            networkLockoutDurationMs: Math.max(0, Number(event.target.value) || 0),
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </label>
-              <label className="checkbox-row">
-                <span>Shared network active</span>
-                <input
-                  type="checkbox"
-                  checked={resolvedSharedNetworkPolicyForm.isActive}
-                  onChange={(event) =>
-                    setSharedNetworkPolicyForm((current) =>
-                      current ? { ...current, isActive: event.target.checked } : current,
-                    )
-                  }
-                />
-              </label>
-            </div>
-            <div className="preview-card neutral owner-preview-card">
-              <p className="preview-pill">Draft posture</p>
-              <p className="preview-detail">
-                {buildRiskLabel(ownerDraft)}. {marketModeCopy(ownerDraft.marketMode)}
-              </p>
-              <div className="owner-controls compact">
-                <div>
-                  <span>Market mode</span>
-                  <strong>{marketModeLabel(ownerDraft.marketMode)}</strong>
-                </div>
-                <div>
-                  <span>Shared scope</span>
-                  <strong>{ownerDraft.useSharedPenalties ? ownerDraft.strikeScopeId : "isolated"}</strong>
-                </div>
-                <div>
-                  <span>Network state</span>
-                  <strong>{ownerDraft.useSharedPenalties ? "enabled" : "disabled"}</strong>
-                </div>
-                <div>
-                  <span>Lockout threshold</span>
-                  <strong>{resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}</strong>
-                </div>
-                <div>
-                  <span>Fuel fee</span>
-                  <strong>{ownerDraft.fuelFeeUnits > 0 ? `${ownerDraft.fuelFeeUnits} Fuel` : "deferred"}</strong>
-                </div>
-              </div>
-            </div>
+          <div className="field-grid">
+            <label className="field-block">
+              <span>Friendly tribes</span>
+              <input
+                value={resolvedOwnerPolicyForm.friendlyTribesText}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current ? { ...current, friendlyTribesText: event.target.value } : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Rival tribes</span>
+              <input
+                value={resolvedOwnerPolicyForm.rivalTribesText}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current ? { ...current, rivalTribesText: event.target.value } : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Friendly multiplier (bps)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedOwnerPolicyForm.friendlyMultiplierBps}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? { ...current, friendlyMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Rival multiplier (bps)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedOwnerPolicyForm.rivalMultiplierBps}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? { ...current, rivalMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Market mode</span>
+              <select
+                value={resolvedOwnerPolicyForm.marketMode}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          marketMode: event.target.value === "procurement" ? "procurement" : "perpetual",
+                        }
+                      : current,
+                  )
+                }
+              >
+                <option value="perpetual">Perpetual Market</option>
+                <option value="procurement">Procurement Market</option>
+              </select>
+            </label>
+            <label className="field-block">
+              <span>Trade fee (Fuel)</span>
+              <input
+                type="number"
+                min={0}
+                disabled
+                value={resolvedOwnerPolicyForm.fuelFeeUnits}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? { ...current, fuelFeeUnits: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Cooldown (ms)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedOwnerPolicyForm.cooldownMs}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? { ...current, cooldownMs: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block checkbox-field">
+              <span>Policy active</span>
+              <input
+                type="checkbox"
+                checked={resolvedOwnerPolicyForm.isActive}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current ? { ...current, isActive: event.target.checked } : current,
+                  )
+                }
+              />
+            </label>
           </div>
-        </div>
-
-        <div className="owner-stage">
-          <p className="preview-pill">{props.compact ? "Reserve" : "Owner reserve"}</p>
-          <p className="preview-detail">
-            Procurement receipts land in the owner inventory inside this same storage unit. Extraction still uses the normal Storage Unit owner flow.
+        </section>
+        <section className="callout">
+          <p className="section-label">Deferred Fuel fee</p>
+          <p className="section-copy">
+            Fuel fees remain disabled until the world contracts prove a real visitor-side Fuel debit path.
           </p>
-          <div className="item-table">
-            {resolvedSnapshot.ownerReserveInventory.length === 0 ? (
-              <p className="empty-state">Owner reserve is empty right now.</p>
+        </section>
+      </div>
+    );
+  }
+
+  function renderOwnerNetworkWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Strike network</p>
+            <p className="section-copy">Shared penalties remain optional and owner-defined.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field-block checkbox-field">
+              <span>Use shared penalties</span>
+              <input
+                type="checkbox"
+                checked={resolvedOwnerPolicyForm.useSharedPenalties}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current ? { ...current, useSharedPenalties: event.target.checked } : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Strike scope ID</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedOwnerPolicyForm.strikeScopeId}
+                onChange={(event) =>
+                  setOwnerPolicyForm((current) =>
+                    current
+                      ? { ...current, strikeScopeId: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Penalty / strike (bps)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps}
+                onChange={(event) =>
+                  setSharedNetworkPolicyForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          pricingPenaltyPerStrikeBps: Math.max(0, Number(event.target.value) || 0),
+                        }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Max penalty (bps)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedSharedNetworkPolicyForm.maxPricingPenaltyBps}
+                onChange={(event) =>
+                  setSharedNetworkPolicyForm((current) =>
+                    current
+                      ? { ...current, maxPricingPenaltyBps: Math.max(0, Number(event.target.value) || 0) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Lockout threshold</span>
+              <input
+                type="number"
+                min={1}
+                value={resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}
+                onChange={(event) =>
+                  setSharedNetworkPolicyForm((current) =>
+                    current
+                      ? { ...current, lockoutStrikeThreshold: Math.max(1, Number(event.target.value) || 1) }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block">
+              <span>Lockout duration (ms)</span>
+              <input
+                type="number"
+                min={0}
+                value={resolvedSharedNetworkPolicyForm.networkLockoutDurationMs}
+                onChange={(event) =>
+                  setSharedNetworkPolicyForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          networkLockoutDurationMs: Math.max(0, Number(event.target.value) || 0),
+                        }
+                      : current,
+                  )
+                }
+              />
+            </label>
+            <label className="field-block checkbox-field">
+              <span>Shared network active</span>
+              <input
+                type="checkbox"
+                checked={resolvedSharedNetworkPolicyForm.isActive}
+                onChange={(event) =>
+                  setSharedNetworkPolicyForm((current) =>
+                    current ? { ...current, isActive: event.target.checked } : current,
+                  )
+                }
+              />
+            </label>
+          </div>
+        </section>
+        <div className="metrics-grid">
+          {renderMetricTile("Scope", ownerDraft.useSharedPenalties ? ownerDraft.strikeScopeId : "isolated")}
+          {renderMetricTile("Penalty", `${resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps} bps`)}
+          {renderMetricTile("Threshold", resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold)}
+          {renderMetricTile("Lockout", `${resolvedSharedNetworkPolicyForm.networkLockoutDurationMs} ms`)}
+        </div>
+      </div>
+    );
+  }
+
+  function renderOwnerPublishWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <div className="metrics-grid">
+          {renderMetricTile("Trust status", trustLabel, resolvedSnapshot.trustStatus === "frozen" ? "warning" : "accent")}
+          {renderMetricTile("Policy status", resolvedSnapshot.policy.isActive ? "active" : "inactive")}
+          {renderMetricTile("Pending policy changes", hasPendingPolicyChanges ? "yes" : "no")}
+          {renderMetricTile("Pending network changes", hasPendingNetworkChanges ? "yes" : "no")}
+        </div>
+        <section className="callout warning">
+          <p className="section-label">Freeze is irreversible</p>
+          <p className="section-copy">
+            Save the ruleset first. Freeze only when the box terms are final.
+          </p>
+        </section>
+        {renderActionSummary(false)}
+      </div>
+    );
+  }
+
+  function renderOverviewWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">How to read this box</p>
+            <p className="section-copy">
+              Inspect the unit, read the published terms, then either trade as a visitor or configure as the owner.
+            </p>
+          </div>
+          <div className="metrics-grid">
+            {renderMetricTile("Assembly", displayedAssemblyName, "accent")}
+            {renderMetricTile("Type", ASSEMBLY_TYPE_LABEL)}
+            {renderMetricTile("Owner", resolvedSnapshot.owner.label)}
+            {renderMetricTile("Runtime", runtimeLabel)}
+            {renderMetricTile("State", operatorStateLabel)}
+            {renderMetricTile("Trust", trustLabel)}
+            {renderMetricTile("Market mode", marketModeSummary)}
+            {renderMetricTile("Risk posture", buildRiskLabel(resolvedSnapshot.policy))}
+            {renderMetricTile("Fuel fee", fuelFeeCopy)}
+          </div>
+        </section>
+        {renderTermsWorkspace(true)}
+      </div>
+    );
+  }
+
+  function renderSignalsWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="workspace-card grow">
+          <div className="workspace-card-header">
+            <p className="section-label">Recent signals</p>
+            <p className="section-copy">Event and action traces live here instead of the main interaction tabs.</p>
+          </div>
+          <ul className="signal-list">
+            {resolvedSnapshot.recentSignals.length === 0 ? (
+              <li className="empty-state">No recent Barter Box events are available.</li>
             ) : (
-              resolvedSnapshot.ownerReserveInventory.map((item) => (
-                <div key={item.typeId} className="item-row">
-                  <div className="item-main">
-                    <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
-                    <strong>{item.label}</strong>
-                  </div>
-                  <div className="item-meta">
-                    <span>{item.quantity} reserve</span>
-                    <span>{item.points} pts</span>
-                    <span>{formatVolume(item.volumeM3, item.quantity)}</span>
-                  </div>
-                </div>
+              resolvedSnapshot.recentSignals.map((signal) => (
+                <li key={`${signal.digest}-${signal.type}`}>
+                  <strong>{signal.type}</strong>
+                  <span>{signal.summary}</span>
+                  <small>{signal.digest}</small>
+                </li>
               ))
             )}
-          </div>
-        </div>
-
-        <div className="owner-stage owner-publish-stage">
-          <p className="preview-pill">{props.compact ? "5. Publish" : "Publish and freeze"}</p>
-          <p className="preview-detail">
-            Save the ruleset first. Freeze only when the box terms are final because the freeze is irreversible.
-          </p>
-          <div className="action-row">
-            <button
-              className="secondary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !resolvedSnapshot.owner.canEditSharedPenaltyPolicy || !ownerActor}
-              onClick={() => void handleSharedNetworkPolicySave()}
-            >
-              Save strike network
-            </button>
-            <button
-              className="primary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
-              onClick={() => void handlePolicySave()}
-            >
-              Save policy
-            </button>
-            <button
-              className="secondary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
-              onClick={() => void handleFreeze()}
-            >
-              Freeze locker
-            </button>
-          </div>
-          {props.compact ? renderActionSummary(true) : null}
-        </div>
-
-        {!props.compact && showSupportCopy ? (
-          <>
-            <p className="support-copy">
-              Owner actions use the owner character `{runtime?.ownerCharacterId ?? "n/a"}`. On localnet, this surface can use the local demo signer. Hosted Utopia requires a real wallet path.
-            </p>
-            <p className="support-copy">
-              Fuel fees are schema-ready but still deferred until a real visitor-side Fuel debit path exists in the world contracts.
-            </p>
-            <p className="support-copy">
-              Stocking inventory remains outside the owner UI in this phase. Seed open inventory and use normal Storage Unit owner inventory flow for reserve collection.
-            </p>
-          </>
-        ) : null}
-      </article>
+          </ul>
+        </section>
+        {renderActionSummary(false)}
+      </div>
     );
   }
 
   function renderLocalSignerPanel() {
     if (!showLocalDemoSignerPanel) return null;
     return (
-      <article className="card local-demo-card">
-        <StepHeader
-          title="Local Demo Signer"
-          description="Unsafe local-only browser signing for localnet proof when a wallet extension cannot talk to custom RPC."
-        />
-        <div className="owner-callout">
-          <p>Paste local `suiprivkey...` values only. Never use testnet or mainnet secrets here.</p>
+      <section className="workspace-card">
+        <div className="workspace-card-header">
+          <p className="section-label">Local Demo Signer</p>
+          <p className="section-copy">Unsafe local-only signer path for localnet proof.</p>
         </div>
-        <div className="signer-grid">
-          <label>
-            Owner signer secret
+        <div className="field-grid">
+          <label className="field-block">
+            <span>Owner signer secret</span>
             <input
               type="password"
               placeholder="suiprivkey..."
@@ -1793,8 +1753,8 @@ function App() {
               }
             />
           </label>
-          <label>
-            Visitor signer secret
+          <label className="field-block">
+            <span>Visitor signer secret</span>
             <input
               type="password"
               placeholder="suiprivkey..."
@@ -1808,31 +1768,25 @@ function App() {
             />
           </label>
         </div>
-        <div className="signer-status-grid">
-          <div className="signer-status-card">
-            <span>Owner signer</span>
-            <strong>
-              {ownerLocalSigner.address
-                ? abbreviateAddress(ownerLocalSigner.address)
-                : ownerLocalSigner.configured
-                  ? "Invalid secret"
-                  : "Not configured"}
-            </strong>
-            <small>{ownerLocalSigner.error ?? "Accepts owner or admin localnet key."}</small>
-          </div>
-          <div className="signer-status-card">
-            <span>Visitor signer</span>
-            <strong>
-              {visitorLocalSigner.address
-                ? abbreviateAddress(visitorLocalSigner.address)
-                : visitorLocalSigner.configured
-                  ? "Invalid secret"
-                  : "Not configured"}
-            </strong>
-            <small>{visitorLocalSigner.error ?? "Accepts visitor or admin localnet key."}</small>
-          </div>
+        <div className="metrics-grid">
+          {renderMetricTile(
+            "Owner signer",
+            ownerLocalSigner.address
+              ? abbreviateAddress(ownerLocalSigner.address)
+              : ownerLocalSigner.configured
+                ? "Invalid secret"
+                : "Not configured",
+          )}
+          {renderMetricTile(
+            "Visitor signer",
+            visitorLocalSigner.address
+              ? abbreviateAddress(visitorLocalSigner.address)
+              : visitorLocalSigner.configured
+                ? "Invalid secret"
+                : "Not configured",
+          )}
         </div>
-        <div className="action-row">
+        <div className="button-row">
           <button className="primary-action" onClick={persistLocalDemoSignerDraft}>
             Save local signer secrets
           </button>
@@ -1840,20 +1794,20 @@ function App() {
             Clear local signer secrets
           </button>
         </div>
-        {localDemoSignerMessage ? <p className="support-copy">{localDemoSignerMessage}</p> : null}
-      </article>
+        {localDemoSignerMessage ? <p className="section-copy">{localDemoSignerMessage}</p> : null}
+      </section>
     );
   }
 
   function renderDiscoveryPanel() {
     if (!showDiscoveryPanel) return null;
     return (
-      <article className="card discovery-card">
-        <StepHeader
-          title="Utopia Object Discovery"
-          description="Use this when the game UI does not surface a usable itemId. It discovers owned or public Utopia objects from the browser."
-        />
-        <div className="action-row">
+      <section className="workspace-card">
+        <div className="workspace-card-header">
+          <p className="section-label">Utopia Object Discovery</p>
+          <p className="section-copy">Use this only when the game UI does not expose an itemId.</p>
+        </div>
+        <div className="button-row">
           <button
             className="primary-action"
             disabled={!account || isLoadingOwnedObjects}
@@ -1869,10 +1823,10 @@ function App() {
             {isLoadingOwnedObjects ? "Loading objects..." : "Load public Utopia objects"}
           </button>
         </div>
-        <p className="support-copy">
-          Connected wallet: {account?.address ?? "not connected"}. Public-object discovery works without ownership and is the correct fallback if you have not finished the tutorial.
+        <p className="section-copy">
+          Connected wallet: {account?.address ?? "not connected"}.
         </p>
-        {ownedObjectsMessage ? <p className="support-copy">{ownedObjectsMessage}</p> : null}
+        {ownedObjectsMessage ? <p className="section-copy">{ownedObjectsMessage}</p> : null}
         <ul className="signal-list">
           {ownedObjectCandidates.length === 0 ? (
             <li className="empty-state">No candidate objects loaded yet.</li>
@@ -1887,202 +1841,315 @@ function App() {
                   <span>tenant: {candidateTenant}</span>
                   <span>type_id: {candidate.typeId}</span>
                   <span>source: {candidate.source}</span>
-                  {candidate.objectId ? <small>objectId: {candidate.objectId}</small> : null}
                   <small>{utopiaUrl}</small>
                 </li>
               );
             })
           )}
         </ul>
-      </article>
+      </section>
     );
   }
 
-  function renderSignalsPanel() {
-    if (!showSignalsPanel) return null;
+  function renderProofWorkspace() {
     return (
-      <article className="card signals-card">
-        <StepHeader
-          title="Recent Locker Signals"
-          description="Recent events stay at the end of the walkthrough because they are proof and audit aids, not core user interaction."
-        />
-        <ul className="signal-list">
-          {resolvedSnapshot.recentSignals.length === 0 ? (
-            <li className="empty-state">No recent Barter Box events are available.</li>
-          ) : (
-            resolvedSnapshot.recentSignals.map((signal) => (
-              <li key={`${signal.digest}-${signal.type}`}>
-                <strong>{signal.type}</strong>
-                <span>{signal.summary}</span>
-                <small>{signal.digest}</small>
-              </li>
-            ))
-          )}
-        </ul>
-      </article>
-    );
-  }
-
-  function renderFullFlow() {
-    return (
-      <>
-        {renderAssemblyCard({
-          step: "01",
-          description: "Start with the unit identity, runtime, trust state, and owner before you inspect any terms.",
-          compact: false,
-        })}
-        {renderTermsCard({
-          step: "02",
-          description: "These are the published trade terms visitors will be measured against.",
-          compact: false,
-        })}
-        <div className="paired-grid">
-          {renderInventoryCard({
-            step: "03A",
-            title: "Locker Shelf",
-            description: "This is the public stock a visitor can request from the box.",
-            items: resolvedSnapshot.openInventory,
-            empty: "No open inventory entries are available right now.",
-            quantityLabel: "open",
-            compact: false,
-          })}
-          {renderInventoryCard({
-            step: "03B",
-            title: "Visitor Hold",
-            description: "This is the visitor-side inventory inside the same unit that can be offered back to the box.",
-            items: resolvedSnapshot.visitorInventory,
-            empty: "No visitor-owned inventory entries are available right now.",
-            quantityLabel: "owned",
-            compact: false,
-          })}
-          {renderInventoryCard({
-            step: "03C",
-            title: "Owner Reserve",
-            description: "Procurement-mode receipts land here inside the same storage unit until the owner extracts or restocks them.",
-            items: resolvedSnapshot.ownerReserveInventory,
-            empty: "No owner reserve entries are available right now.",
-            quantityLabel: "reserve",
-            compact: false,
-          })}
-        </div>
-        {showVisitorWorkspace
-          ? renderTradeCard({
-              step: "04 / 05",
-              description: "Preview a trade, then execute it with the visitor path. The result surfaces local and shared trust consequences immediately.",
-              compact: false,
-            })
-          : null}
-        {showOwnerWorkspace
-          ? renderOwnerCard({
-              step: "06",
-              description: "Configure the box policy and shared strike network with a guided owner workflow.",
-              compact: false,
-            })
-          : null}
-        <article className="card status-trace-card">
-          <StepHeader
-            step="07"
-            title="Debug and Proof Tools"
-            description="Operator-only tooling sits last so it cannot obscure the normal order of operations."
-          />
-          {renderActionSummary(false)}
-          {showSupportCopy ? (
-            <p className="support-copy">
-              Localnet proof can use the explicit local-only demo signer path. Hosted Utopia flows must use a real wallet connection and never expose local-only controls.
+      <div className="workspace-stack">
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Proof notes</p>
+            <p className="section-copy">
+              Localnet uses the explicit local-only demo signer path. Hosted Utopia uses a real wallet path only.
             </p>
+          </div>
+          {showSupportCopy ? (
+            <div className="note-list">
+              {loading ? <span>Reading selected smart object...</span> : null}
+              {!loading && lockerData?.notes.map((note) => <span key={note}>{note}</span>)}
+            </div>
           ) : null}
-        </article>
+        </section>
         {renderLocalSignerPanel()}
         {renderDiscoveryPanel()}
-        {renderSignalsPanel()}
-      </>
+        {renderActionSummary(false)}
+      </div>
     );
   }
 
-  function renderVisitorFlow() {
+  function renderLeftRail() {
+    if (isVisitorMode) {
+      return (
+        <aside className="shell-panel left-rail visitor-rail">
+          {renderRailSection({
+            title: "Shelf",
+            subtitle: "Click to set the requested item.",
+            items: resolvedSnapshot.openInventory,
+            quantityLabel: "shelf",
+            selectedTypeId: requestedTypeId,
+            onSelect: (typeId) => startTransition(() => setRequestedTypeId(typeId)),
+          })}
+          {renderRailSection({
+            title: "Hold",
+            subtitle: "Click to set the offered item.",
+            items: resolvedSnapshot.visitorInventory,
+            quantityLabel: "hold",
+            selectedTypeId: offeredTypeId,
+            onSelect: (typeId) => startTransition(() => setOfferedTypeId(typeId)),
+          })}
+        </aside>
+      );
+    }
+
+    if (isOwnerMode) {
+      return (
+        <aside className="shell-panel left-rail owner-rail">
+          {renderRailSection({
+            title: "Shelf",
+            subtitle: "Current public stock.",
+            items: resolvedSnapshot.openInventory,
+            quantityLabel: "shelf",
+          })}
+          {renderRailSection({
+            title: "Reserve",
+            subtitle: "Procurement receipts inside this unit.",
+            items: resolvedSnapshot.ownerReserveInventory,
+            quantityLabel: "reserve",
+          })}
+        </aside>
+      );
+    }
+
+    const railTabs: WorkspaceTabDefinition<FullRailPanel>[] = [
+      { id: "shelf", label: "Shelf" },
+      { id: "hold", label: "Hold" },
+      { id: "reserve", label: "Reserve" },
+    ];
+    const activeItems =
+      fullRailPanel === "shelf"
+        ? resolvedSnapshot.openInventory
+        : fullRailPanel === "hold"
+          ? resolvedSnapshot.visitorInventory
+          : resolvedSnapshot.ownerReserveInventory;
+    const activeQuantityLabel =
+      fullRailPanel === "shelf" ? "shelf" : fullRailPanel === "hold" ? "hold" : "reserve";
+    const activeSelectedTypeId = fullRailPanel === "shelf" ? requestedTypeId : fullRailPanel === "hold" ? offeredTypeId : undefined;
+
     return (
-      <>
-        {renderAssemblyCard({
-          description: "Inspect the object, trust state, and runtime before interacting with the shelf.",
-          compact: true,
-        })}
-        {renderInventoryCard({
-          title: "Locker Shelf",
-          description: "Available goods",
-          items: resolvedSnapshot.openInventory,
-          empty: "No shelf items available right now.",
-          quantityLabel: "open",
-          compact: true,
-        })}
-        {renderInventoryCard({
-          title: "Your Hold",
-          description: "Goods you can offer into the box",
-          items: resolvedSnapshot.visitorInventory,
-          empty: "No visitor hold items available right now.",
-          quantityLabel: "owned",
-          compact: true,
-        })}
-        {showVisitorWorkspace
-          ? renderTradeCard({
-              description: "Choose what to take, what to offer, then execute the exchange.",
-              compact: true,
-            })
-          : null}
-      </>
+      <aside className="shell-panel left-rail full-rail">
+        <div className="rail-tabs">
+          {railTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={tab.id === fullRailPanel ? "rail-tab active" : "rail-tab"}
+              onClick={() => setFullRailPanel(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="rail-scroll rail-full-scroll">
+          {renderAssetRows(
+            activeItems,
+            activeQuantityLabel,
+            activeSelectedTypeId,
+            fullRailPanel === "shelf"
+              ? (typeId) => startTransition(() => setRequestedTypeId(typeId))
+              : fullRailPanel === "hold"
+                ? (typeId) => startTransition(() => setOfferedTypeId(typeId))
+                : undefined,
+          )}
+        </div>
+      </aside>
     );
   }
 
-  function renderOwnerFlow() {
+  function renderVisitorWorkspace() {
+    if (!showVisitorWorkspace) {
+      return <section className="workspace-empty">Visitor controls are not available in this runtime.</section>;
+    }
+
+    switch (visitorWorkspaceTab) {
+      case "terms":
+        return renderTermsWorkspace(false);
+      case "status":
+        return renderStatusWorkspace();
+      case "trade":
+      default:
+        return renderVisitorTradeWorkspace(false);
+    }
+  }
+
+  function renderOwnerWorkspace() {
+    if (!showOwnerWorkspace) {
+      return <section className="workspace-empty">Owner controls are not available in this runtime.</section>;
+    }
+
+    switch (ownerWorkspaceTab) {
+      case "terms":
+        return renderOwnerTermsWorkspace();
+      case "network":
+        return renderOwnerNetworkWorkspace();
+      case "publish":
+        return renderOwnerPublishWorkspace();
+      case "goods":
+      default:
+        return renderOwnerGoodsWorkspace();
+    }
+  }
+
+  function renderFullOwnerWorkspace() {
     return (
-      <>
-        {renderAssemblyCard({
-          step: "1",
-          description: "Confirm you are editing the right unit and that the policy is still mutable.",
-          compact: true,
-        })}
-        {renderTermsCard({
-          step: "2",
-          description: "Review the current published terms before you change them.",
-          compact: true,
-        })}
-        {renderInventoryCard({
-          step: "Reserve",
-          title: "Owner Reserve",
-          description: "Procurement receipts accumulate here for later extraction through the standard Storage Unit owner flow.",
-          items: resolvedSnapshot.ownerReserveInventory,
-          empty: "Owner reserve is empty right now.",
-          quantityLabel: "reserve",
-          compact: true,
-        })}
-        {showOwnerWorkspace
-          ? renderOwnerCard({
-              step: "3 / 4 / 5",
-              description: "Choose accepted goods, set trade terms, attach shared penalties if needed, then publish.",
-              compact: true,
-            })
-          : null}
-      </>
+      <div className="workspace-stack">
+        {renderOwnerGoodsWorkspace()}
+        {renderOwnerTermsWorkspace()}
+        {renderOwnerNetworkWorkspace()}
+        {renderOwnerPublishWorkspace()}
+      </div>
     );
   }
 
-  let mainContent: ReactNode;
-  if (isFullMode) {
-    mainContent = renderFullFlow();
-  } else if (isOwnerMode) {
-    mainContent = renderOwnerFlow();
-  } else {
-    mainContent = renderVisitorFlow();
+  function renderFullWorkspace() {
+    switch (fullWorkspaceTab) {
+      case "trade":
+        return renderVisitorTradeWorkspace(true);
+      case "owner":
+        return renderFullOwnerWorkspace();
+      case "signals":
+        return renderSignalsWorkspace();
+      case "proof":
+        return renderProofWorkspace();
+      case "overview":
+      default:
+        return renderOverviewWorkspace();
+    }
+  }
+
+  function renderWorkspaceContent() {
+    if (isVisitorMode) return renderVisitorWorkspace();
+    if (isOwnerMode) return renderOwnerWorkspace();
+    return renderFullWorkspace();
+  }
+
+  function renderActiveWorkspaceTabs() {
+    if (isVisitorMode) {
+      return renderWorkspaceTabs(VISITOR_WORKSPACE_TABS, visitorWorkspaceTab, setVisitorWorkspaceTab);
+    }
+    if (isOwnerMode) {
+      return renderWorkspaceTabs(OWNER_WORKSPACE_TABS, ownerWorkspaceTab, setOwnerWorkspaceTab);
+    }
+    return renderWorkspaceTabs(FULL_WORKSPACE_TABS, fullWorkspaceTab, setFullWorkspaceTab);
+  }
+
+  const bottomMessage =
+    actionState.status !== "idle"
+      ? actionState.message ?? "Wallet action completed."
+      : isVisitorMode || fullWorkspaceTab === "trade"
+        ? tradeBlockedReason ?? compactTradeCopy
+        : isOwnerMode || fullWorkspaceTab === "owner"
+          ? hasPendingPolicyChanges || hasPendingNetworkChanges
+            ? "Draft changes are pending publication."
+            : "Published rules match the current draft."
+          : isFullMode && fullWorkspaceTab === "proof"
+            ? "Proof and discovery tools stay isolated from the normal interaction surfaces."
+            : currentViewDefinition[viewMode].description;
+
+  const showTradeActions = isVisitorMode || (isFullMode && fullWorkspaceTab === "trade");
+  const showOwnerActions = isOwnerMode || (isFullMode && fullWorkspaceTab === "owner");
+
+  function renderBottomBar() {
+    return (
+      <footer className="bottom-strip">
+        <div className="bottom-status">
+          <p className={`action-status ${actionState.status}`}>
+            {actionState.status === "idle" ? "Status" : inContextStatusLabel}
+          </p>
+          <p className="status-copy">{bottomMessage}</p>
+          {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
+        </div>
+        <div className="bottom-actions">
+          {showOwnerActions && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (
+            <button
+              className="secondary-action"
+              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              onClick={() => void handleSharedNetworkPolicySave()}
+            >
+              Save network
+            </button>
+          ) : null}
+          {showOwnerActions ? (
+            <button
+              className="primary-action"
+              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              onClick={() => void handlePolicySave()}
+            >
+              Save policy
+            </button>
+          ) : null}
+          {showOwnerActions ? (
+            <button
+              className="secondary-action"
+              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              onClick={() => void handleFreeze()}
+            >
+              Freeze ruleset
+            </button>
+          ) : null}
+          {showTradeActions ? (
+            <button
+              className="primary-action"
+              disabled={Boolean(tradeBlockedReason)}
+              onClick={() => void handleTrade()}
+            >
+              {tradeButtonLabel}
+            </button>
+          ) : null}
+          <button className="secondary-action" onClick={() => void refreshLockerContext()}>
+            Refresh
+          </button>
+        </div>
+      </footer>
+    );
+  }
+
+  if (!snapshot || !requestedItem || !offeredItem || !preview || !ownerPolicyForm || !sharedNetworkPolicyForm) {
+    return (
+      <main className={shellClass}>
+        <section className="loading-shell">
+          <p className="eyebrow">{PRODUCT_WORKING_NAME}</p>
+          <h1>Loading assembly context...</h1>
+          <p className="hero-text">
+            {isResolvingData ? "Resolving live locker state..." : "Unable to resolve the Barter Box view model."}
+          </p>
+        </section>
+      </main>
+    );
   }
 
   return (
     <main className={shellClass}>
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">{PRODUCT_WORKING_NAME} | {currentViewDefinition[viewMode].eyebrow}</p>
-          <h1>{currentViewDefinition[viewMode].title}</h1>
-          <p className="hero-text">{currentViewDefinition[viewMode].description}</p>
+      <header className="command-bar shell-panel">
+        <div className="command-main">
+          <div className="command-title">
+            <p className="eyebrow">{PRODUCT_WORKING_NAME}</p>
+            <h1>{displayedAssemblyName}</h1>
+          </div>
+          <div className="command-meta">
+            <span>{ASSEMBLY_TYPE_LABEL}</span>
+            <span>{resolvedSnapshot.owner.label}</span>
+            <span>{compactAddress(displayedAssemblyId, true)}</span>
+            {isFullMode ? <span>{runtimeLabel}</span> : null}
+          </div>
         </div>
-        <div className="hero-actions">
+        <div className="command-actions">
+          <div className="state-badges">
+            <span className={`status-pill ${resolvedSnapshot.policy.isActive ? "online" : "offline"}`}>
+              {operatorStateLabel}
+            </span>
+            <span className={resolvedSnapshot.trustStatus === "frozen" ? "status-pill muted" : "status-pill accent"}>
+              {trustLabel}
+            </span>
+            <span className="status-pill muted">{marketModeSummary}</span>
+          </div>
           {renderModeToggle()}
           <span className="mode-hint">Tab cycles views</span>
           <button
@@ -2092,11 +2159,17 @@ function App() {
             {account ? abbreviateAddress(account.address) : "Connect Wallet"}
           </button>
         </div>
+      </header>
+
+      <section className={`shell-layout view-${viewMode}`}>
+        {renderLeftRail()}
+        <section className="shell-panel workspace-shell">
+          {renderActiveWorkspaceTabs()}
+          <div className="workspace-body">{renderWorkspaceContent()}</div>
+        </section>
       </section>
 
-      <section className={`layout-grid layout-${viewMode}`}>
-        {mainContent}
-      </section>
+      {renderBottomBar()}
     </main>
   );
 }
