@@ -7,7 +7,7 @@ import {
   useConnection,
   useSmartObject,
 } from "@evefrontier/dapp-kit";
-import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
+import { useCurrentAccount, useCurrentWallet, useDAppKit } from "@mysten/dapp-kit-react";
 import {
   PRODUCT_WORKING_NAME,
   TRUST_LOCKER_CATALOG,
@@ -27,17 +27,22 @@ import {
 } from "./liveLocalnet";
 import { resolveLockerData } from "./lockerDataProvider";
 import type {
+  LockerIdentityState,
   LockerDataEnvelope,
   RuntimeEnvironment,
   UiCapabilities,
   UiMode,
+  WalletCharacterCandidate,
 } from "./models";
 import { quoteTradePreview } from "./trustMath";
 
 const LOCAL_DEMO_SIGNER_STORAGE_KEY = "trust-locker.local-demo-signer.v1";
 const VIEW_MODE_STORAGE_KEY = "trust-locker.view-mode.v1";
+const CHARACTER_SELECTION_STORAGE_PREFIX = "trust-locker.selected-character.v1";
+const IN_GAME_VIEW_OVERRIDE_PREFIX = "trust-locker.in-game-view-override.v1";
 const DEFAULT_TENANT = "utopia";
 const VIEW_SEQUENCE: UiMode[] = ["visitor", "owner", "full"];
+const IN_GAME_WALLET_NAME = "EVE Frontier Client Wallet";
 
 type LocalDemoSignerDraft = {
   ownerSecretKey: string;
@@ -284,6 +289,44 @@ function writeViewMode(mode: UiMode) {
   window.history.replaceState({}, "", url);
 }
 
+function buildCharacterSelectionStorageKey(tenant: string, lockerId: string): string {
+  return `${CHARACTER_SELECTION_STORAGE_PREFIX}:${tenant}:${lockerId}`;
+}
+
+function readStoredSelectedCharacterId(tenant: string, lockerId?: string): string | null {
+  if (typeof window === "undefined" || !lockerId) return null;
+  return window.localStorage.getItem(buildCharacterSelectionStorageKey(tenant, lockerId));
+}
+
+function writeStoredSelectedCharacterId(tenant: string, lockerId: string, characterId: string | null) {
+  if (typeof window === "undefined") return;
+  const key = buildCharacterSelectionStorageKey(tenant, lockerId);
+  if (characterId) {
+    window.localStorage.setItem(key, characterId);
+  } else {
+    window.localStorage.removeItem(key);
+  }
+}
+
+function buildInGameViewOverrideKey(tenant: string, lockerId: string): string {
+  return `${IN_GAME_VIEW_OVERRIDE_PREFIX}:${tenant}:${lockerId}`;
+}
+
+function readInGameViewOverride(tenant: string, lockerId?: string): UiMode | null {
+  if (typeof window === "undefined" || !lockerId) return null;
+  return normalizeViewMode(window.sessionStorage.getItem(buildInGameViewOverrideKey(tenant, lockerId)));
+}
+
+function writeInGameViewOverride(tenant: string, lockerId: string, mode: UiMode | null) {
+  if (typeof window === "undefined") return;
+  const key = buildInGameViewOverrideKey(tenant, lockerId);
+  if (mode) {
+    window.sessionStorage.setItem(key, mode);
+  } else {
+    window.sessionStorage.removeItem(key);
+  }
+}
+
 function buildAssemblyViewUrl(itemId: string, tenant: string, view: UiMode): string {
   if (typeof window === "undefined") return "";
   const url = new URL(window.location.href);
@@ -296,6 +339,13 @@ function buildAssemblyViewUrl(itemId: string, tenant: string, view: UiMode): str
 function cycleViewMode(current: UiMode): UiMode {
   const index = VIEW_SEQUENCE.indexOf(current);
   return VIEW_SEQUENCE[(index + 1) % VIEW_SEQUENCE.length] ?? "visitor";
+}
+
+function cycleAllowedViewMode(current: UiMode, allowed: UiMode[]): UiMode {
+  const sequence = VIEW_SEQUENCE.filter((mode) => allowed.includes(mode));
+  if (sequence.length === 0) return "visitor";
+  const index = sequence.indexOf(current);
+  return sequence[(index + 1) % sequence.length] ?? sequence[0] ?? "visitor";
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -443,11 +493,13 @@ function StepHeader(props: { step?: string; title: string; description: string }
 function App() {
   const { handleConnect, handleDisconnect } = useConnection();
   const account = useCurrentAccount();
+  const currentWallet = useCurrentWallet();
   const dAppKit = useDAppKit();
   const { assembly, assemblyOwner, loading, error } = useSmartObject();
 
   const [lockerData, setLockerData] = useState<LockerDataEnvelope | null>(null);
   const [viewMode, setViewMode] = useState<UiMode>(readInitialViewMode);
+  const [selectedWalletCharacterId, setSelectedWalletCharacterId] = useState<string | null>(null);
   const [visitorWorkspaceTab, setVisitorWorkspaceTab] = useState<VisitorWorkspaceTab>("trade");
   const [ownerWorkspaceTab, setOwnerWorkspaceTab] = useState<OwnerWorkspaceTab>("goods");
   const [fullWorkspaceTab, setFullWorkspaceTab] = useState<FullWorkspaceTab>("overview");
@@ -485,6 +537,16 @@ function App() {
   const preferredReaderAddress =
     account?.address ?? ownerLocalSigner.address ?? visitorLocalSigner.address ?? null;
   const tenant = readTenantFromLocation();
+  const isInGameClientWallet = currentWallet?.name?.includes(IN_GAME_WALLET_NAME) ?? false;
+  const storageLockerId = assembly?.id ?? lockerData?.runtime?.lockerId ?? lockerData?.snapshot.lockerId ?? null;
+
+  useEffect(() => {
+    if (!storageLockerId) {
+      setSelectedWalletCharacterId(null);
+      return;
+    }
+    setSelectedWalletCharacterId(readStoredSelectedCharacterId(tenant, storageLockerId));
+  }, [storageLockerId, tenant]);
 
   useEffect(() => {
     let cancelled = false;
@@ -504,6 +566,8 @@ function App() {
         walletAddress: preferredReaderAddress,
         tenant,
         viewMode,
+        selectedWalletCharacterId,
+        isInGameClient: isInGameClientWallet,
       });
       if (!cancelled) {
         setLockerData(envelope);
@@ -514,7 +578,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [assembly?.id, assembly?.name, assemblyOwner?.address, assemblyOwner?.id, assemblyOwner?.name, error, preferredReaderAddress, refreshTick, tenant, viewMode]);
+  }, [assembly?.id, assembly?.name, assemblyOwner?.address, assemblyOwner?.id, assemblyOwner?.name, error, isInGameClientWallet, preferredReaderAddress, refreshTick, selectedWalletCharacterId, tenant, viewMode]);
 
   const snapshot = lockerData?.snapshot;
   const runtime = lockerData?.runtime;
@@ -530,10 +594,24 @@ function App() {
     showVisitorWorkspace: false,
     showOwnerWorkspace: false,
     showGuidedFullFlow: false,
+    showModeToggle: false,
+    allowedViewModes: ["visitor", "owner", "full"],
+    requestedViewMode: viewMode,
+    effectiveViewMode: viewMode,
+    ownerActionsEnabled: false,
+    visitorActionsEnabled: false,
   };
-  const isVisitorMode = viewMode === "visitor";
-  const isOwnerMode = viewMode === "owner";
-  const isFullMode = viewMode === "full";
+  const identity: LockerIdentityState = lockerData?.identity ?? {
+    assemblyOwnerCharacterId: runtime?.ownerCharacterId ?? "",
+    resolvedWalletCharacters: [],
+    selectedWalletCharacterId: runtime?.visitorCharacterId ?? null,
+    isCurrentCharacterOwner: false,
+    characterResolutionStatus: "none",
+  };
+  const effectiveViewMode = uiCapabilities.effectiveViewMode;
+  const isVisitorMode = effectiveViewMode === "visitor";
+  const isOwnerMode = effectiveViewMode === "owner";
+  const isFullMode = effectiveViewMode === "full";
   const showLocalDemoSignerPanel = uiCapabilities.showDemoSigner;
   const showDiscoveryPanel = uiCapabilities.showDiscovery;
   const showSignalsPanel = uiCapabilities.showSignals;
@@ -541,6 +619,9 @@ function App() {
   const showAdvancedOwnerControls = uiCapabilities.showAdvancedOwnerControls;
   const showVisitorWorkspace = uiCapabilities.showVisitorWorkspace;
   const showOwnerWorkspace = uiCapabilities.showOwnerWorkspace;
+  const ownerActionsEnabled = uiCapabilities.ownerActionsEnabled;
+  const visitorActionsEnabled = uiCapabilities.visitorActionsEnabled;
+  const availableViewModes = uiCapabilities.allowedViewModes;
 
   function resolveActorExecution(role: "owner" | "visitor"): {
     senderAddress: string;
@@ -571,6 +652,43 @@ function App() {
 
   const ownerActor = resolveActorExecution("owner");
   const visitorActor = resolveActorExecution("visitor");
+
+  function ownerActionBlockedReason(action: string): string | null {
+    if (showLocalDemoSignerPanel) {
+      return !ownerActor
+        ? `Configure the local owner demo signer or connect an owner-capable wallet before attempting ${action}.`
+        : null;
+    }
+    if (!runtime) return "Load a live Barter Box runtime before attempting owner actions.";
+    if (!identity.selectedWalletCharacterId) {
+      return identity.characterResolutionStatus === "multiple_needs_selection"
+        ? "Multiple wallet characters were found. Choose the owner character before attempting owner actions."
+        : "No live character was resolved for this wallet.";
+    }
+    if (!identity.isCurrentCharacterOwner) {
+      return "The selected character is not the current onchain owner of this storage unit.";
+    }
+    if (!ownerActor) return "Connect the owner wallet before attempting owner actions.";
+    return null;
+  }
+
+  function visitorActionBlockedReason(): string | null {
+    if (showLocalDemoSignerPanel) {
+      return !visitorActor
+        ? "Configure the local visitor demo signer or connect a visitor-capable wallet before trading."
+        : null;
+    }
+    if (!runtime) return runtimeEnvironment === "localnet"
+      ? "Localnet runtime context is not loaded yet."
+      : "Load a live Barter Box runtime before trading.";
+    if (!identity.selectedWalletCharacterId) {
+      return identity.characterResolutionStatus === "multiple_needs_selection"
+        ? "Multiple wallet characters were found. Choose one before attempting a visitor trade."
+        : "No live character was resolved for this wallet.";
+    }
+    if (!visitorActor) return "Connect a visitor-capable wallet before trading.";
+    return null;
+  }
 
   useEffect(() => {
     if (!snapshot) return;
@@ -611,7 +729,34 @@ function App() {
   ]);
 
   useEffect(() => {
+    if (!storageLockerId) return;
+    if (identity.selectedWalletCharacterId !== selectedWalletCharacterId) {
+      setSelectedWalletCharacterId(identity.selectedWalletCharacterId);
+      return;
+    }
+    writeStoredSelectedCharacterId(tenant, storageLockerId, selectedWalletCharacterId);
+  }, [identity.selectedWalletCharacterId, selectedWalletCharacterId, storageLockerId, tenant]);
+
+  useEffect(() => {
+    if (runtimeEnvironment !== "utopia-in-game" || !storageLockerId) return;
+    const storedOverride = readInGameViewOverride(tenant, storageLockerId);
+    const allowed = availableViewModes.includes(storedOverride ?? "full")
+      ? storedOverride
+      : null;
+    const nextViewMode =
+      allowed ??
+      (identity.isCurrentCharacterOwner ? "owner" : "visitor");
+    if (viewMode !== nextViewMode) {
+      setViewMode(nextViewMode);
+    }
+  }, [availableViewModes, identity.isCurrentCharacterOwner, runtimeEnvironment, storageLockerId, tenant, viewMode]);
+
+  useEffect(() => {
     writeViewMode(viewMode);
+    if (runtimeEnvironment === "utopia-in-game" && storageLockerId) {
+      const storableMode = availableViewModes.includes(viewMode) ? viewMode : null;
+      writeInGameViewOverride(tenant, storageLockerId, storableMode);
+    }
   }, [viewMode]);
 
   useEffect(() => {
@@ -621,12 +766,12 @@ function App() {
       if (tagName === "input" || tagName === "textarea" || tagName === "select") return;
       if (event.key !== "Tab" || event.metaKey || event.ctrlKey || event.altKey) return;
       event.preventDefault();
-      setViewMode((current) => cycleViewMode(current));
+      setViewMode((current) => cycleAllowedViewMode(current, availableViewModes));
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [availableViewModes]);
 
   const acceptedItems = snapshot?.policy.acceptedItems ?? [];
   const requestedItem =
@@ -827,13 +972,9 @@ function App() {
 
   async function handlePolicySave() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !runtime.ownerCharacterId || !ownerPolicyForm || !actor) {
-      setBlockedAction(
-        "Save policy",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load the live Barter Box runtime before saving policy.",
-      );
+    const blockedReason = ownerActionBlockedReason("Save policy");
+    if (!runtime || !runtime.ownerCharacterId || !ownerPolicyForm || !actor || blockedReason) {
+      setBlockedAction("Save policy", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
 
@@ -862,13 +1003,9 @@ function App() {
 
   async function handleFreeze() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !runtime.ownerCharacterId || !actor) {
-      setBlockedAction(
-        "Freeze locker",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load the live Barter Box runtime before freezing.",
-      );
+    const blockedReason = ownerActionBlockedReason("Freeze ruleset");
+    if (!runtime || !runtime.ownerCharacterId || !actor || blockedReason) {
+      setBlockedAction("Freeze locker", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
 
@@ -892,13 +1029,9 @@ function App() {
 
   async function handleSharedNetworkPolicySave() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !runtime.ownerCharacterId || !sharedNetworkPolicyForm || !actor) {
-      setBlockedAction(
-        "Save strike network",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load the live Barter Box runtime before saving trust-network settings.",
-      );
+    const blockedReason = ownerActionBlockedReason("Save trust network");
+    if (!runtime || !runtime.ownerCharacterId || !sharedNetworkPolicyForm || !actor || blockedReason) {
+      setBlockedAction("Save strike network", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
 
@@ -943,13 +1076,9 @@ function App() {
       return;
     }
 
-    if (!runtime || !runtime.visitorCharacterId || !actor || !requestedItem || !offeredItem) {
-      setBlockedAction(
-        "Execute trade",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local visitor demo signer, or connect a visitor-capable wallet."
-          : "Connect a wallet with a live character and load the live Barter Box runtime before trading.",
-      );
+    const blockedReason = visitorActionBlockedReason();
+    if (!runtime || !runtime.visitorCharacterId || !actor || !requestedItem || !offeredItem || blockedReason) {
+      setBlockedAction("Execute trade", blockedReason ?? "Visitor trading is unavailable.");
       return;
     }
 
@@ -975,13 +1104,9 @@ function App() {
     const actor = resolveActorExecution("owner");
     const quantity = readInventoryActionQuantity("stock", typeId);
     const item = resolvedSnapshot.ownerCargoInventory.find((entry) => entry.typeId === typeId);
-    if (!runtime || !runtime.ownerCharacterId || !actor) {
-      setBlockedAction(
-        "Stock shelf",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load a live Barter Box before stocking shelf items.",
-      );
+    const blockedReason = ownerActionBlockedReason("Stock shelf");
+    if (!runtime || !runtime.ownerCharacterId || !actor || blockedReason) {
+      setBlockedAction("Stock shelf", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
     if (!item) {
@@ -1021,13 +1146,9 @@ function App() {
       setBlockedAction("Claim receipts", "Claiming only applies in procurement mode.");
       return;
     }
-    if (!runtime || !runtime.ownerCharacterId || !actor) {
-      setBlockedAction(
-        "Claim receipts",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load a live Barter Box before claiming receipts.",
-      );
+    const blockedReason = ownerActionBlockedReason("Claim receipts");
+    if (!runtime || !runtime.ownerCharacterId || !actor || blockedReason) {
+      setBlockedAction("Claim receipts", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
     if (!item) {
@@ -1067,13 +1188,9 @@ function App() {
       setBlockedAction("Restock from claimable", "Restocking from claimable receipts only applies in procurement mode.");
       return;
     }
-    if (!runtime || !runtime.ownerCharacterId || !actor) {
-      setBlockedAction(
-        "Restock from claimable",
-        showLocalDemoSignerPanel
-          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load a live Barter Box before restocking receipts.",
-      );
+    const blockedReason = ownerActionBlockedReason("Restock from claimable");
+    if (!runtime || !runtime.ownerCharacterId || !actor || blockedReason) {
+      setBlockedAction("Restock from claimable", blockedReason ?? "Owner actions are unavailable.");
       return;
     }
     if (!item) {
@@ -1107,7 +1224,7 @@ function App() {
     );
   }
 
-  const shellClass = `app-shell mode-${viewMode}`;
+  const shellClass = `app-shell mode-${effectiveViewMode}`;
 
   if (!snapshot || !requestedItem || !offeredItem || !preview || !ownerPolicyForm || !sharedNetworkPolicyForm) {
     return (
@@ -1176,6 +1293,21 @@ function App() {
       : "No network penalty";
   const marketModeSummary = marketModeLabel(resolvedSnapshot.policy.marketMode);
   const marketModeDescription = marketModeCopy(resolvedSnapshot.policy.marketMode);
+  const selectedCharacter = identity.resolvedWalletCharacters.find(
+    (candidate) => candidate.id === identity.selectedWalletCharacterId,
+  );
+  const ownerCharacter = identity.resolvedWalletCharacters.find((candidate) => candidate.matchesOwner);
+  const characterSelectionRequired =
+    runtimeEnvironment !== "localnet" &&
+    identity.characterResolutionStatus === "multiple_needs_selection";
+  const ownerReadOnlyReason =
+    runtimeEnvironment !== "localnet" && !ownerActionsEnabled
+      ? !identity.selectedWalletCharacterId
+        ? characterSelectionRequired
+          ? "Choose the owner character before attempting owner actions."
+          : "No owner-capable character is currently selected for this unit."
+        : "The selected character does not match the current onchain owner of this unit."
+      : null;
   const fuelFeeCopy =
     resolvedSnapshot.policy.fuelFeeUnits > 0
       ? resolvedSnapshot.fuelFeeSupported
@@ -1199,17 +1331,11 @@ function App() {
         ? "Choose two different goods. Same-item trades are disabled."
       : resolvedPreview.fuelFeeBlockedReason
         ? resolvedPreview.fuelFeeBlockedReason
-      : !runtime
-        ? runtimeUnavailableReason
+      : visitorActionBlockedReason()
+        ? visitorActionBlockedReason()
         : resolvedSnapshot.openInventory.length === 0
           ? "The locker has no open inventory available for trade."
-          : !runtime.visitorCharacterId
-            ? "Connect a wallet with a live character to load your cargo and trade against this box."
-            : !visitorActor
-              ? showLocalDemoSignerPanel
-                ? "Configure the local visitor demo signer or connect a visitor-capable wallet."
-                : "Connect a visitor-capable wallet before trading."
-            : null;
+          : null;
   const tradeButtonLabel = displayedCooldownActive
     ? "Cooldown active"
     : sameItemSelected
@@ -1240,13 +1366,14 @@ function App() {
   };
 
   function renderModeToggle() {
+    if (!uiCapabilities.showModeToggle) return null;
     return (
       <div className="mode-switch" role="tablist" aria-label="View mode">
-        {VIEW_SEQUENCE.map((mode) => (
+        {VIEW_SEQUENCE.filter((mode) => availableViewModes.includes(mode)).map((mode) => (
           <button
             key={mode}
             type="button"
-            className={mode === viewMode ? "mode-chip active" : "mode-chip"}
+            className={mode === effectiveViewMode ? "mode-chip active" : "mode-chip"}
             onClick={() => setViewMode(mode)}
           >
             {currentViewDefinition[mode].label}
@@ -1282,6 +1409,57 @@ function App() {
         <p className="status-copy">{actionState.message ?? "No wallet action has been attempted yet."}</p>
         {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
       </div>
+    );
+  }
+
+  function renderCharacterSelectionPanel() {
+    if (runtimeEnvironment === "localnet" || identity.resolvedWalletCharacters.length === 0) {
+      return null;
+    }
+
+    return (
+      <section className="shell-panel character-panel">
+        <div className="character-panel-copy">
+          <p className="section-label">Character selection</p>
+          <p className="section-copy">
+            {identity.resolvedWalletCharacters.length === 1
+              ? "One wallet character was resolved automatically for this unit."
+              : "Multiple wallet characters were found. Choose the one that should act on this unit before attempting live writes."}
+          </p>
+        </div>
+        <div className="character-panel-controls">
+          <select
+            value={identity.selectedWalletCharacterId ?? ""}
+            onChange={(event) =>
+              setSelectedWalletCharacterId(event.target.value ? event.target.value : null)
+            }
+          >
+            {identity.resolvedWalletCharacters.length > 1 ? <option value="">Choose character</option> : null}
+            {identity.resolvedWalletCharacters.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+                {candidate.matchesOwner ? " (Owner)" : " (Visitor)"}
+              </option>
+            ))}
+          </select>
+          <div className="character-panel-meta">
+            <span>
+              Selected: {selectedCharacter ? `${selectedCharacter.name}${selectedCharacter.matchesOwner ? " (Owner)" : ""}` : "none"}
+            </span>
+            <span>Onchain owner: {ownerCharacter ? ownerCharacter.name : compactAddress(identity.assemblyOwnerCharacterId, true)}</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderOwnerReadOnlyNotice() {
+    if (!ownerReadOnlyReason) return null;
+    return (
+      <section className="callout warning">
+        <p className="section-label">Read-only owner view</p>
+        <p className="section-copy">{ownerReadOnlyReason}</p>
+      </section>
     );
   }
 
@@ -2357,6 +2535,19 @@ function App() {
       <div className="workspace-stack">
         <section className="workspace-card">
           <div className="workspace-card-header">
+            <p className="section-label">Identity proof</p>
+            <p className="section-copy">
+              Record the onchain owner character and the selected acting character for each live proof step.
+            </p>
+          </div>
+          <div className="metrics-grid">
+            {renderMetricTile("Owner character", identity.assemblyOwnerCharacterId || "unresolved", "accent")}
+            {renderMetricTile("Selected character", identity.selectedWalletCharacterId || "unselected")}
+            {renderMetricTile("Resolution", identity.characterResolutionStatus)}
+          </div>
+        </section>
+        <section className="workspace-card">
+          <div className="workspace-card-header">
             <p className="section-label">Proof notes</p>
             <p className="section-copy">
               Localnet uses the explicit local-only demo signer path. Hosted Utopia uses a real wallet path only.
@@ -2516,29 +2707,49 @@ function App() {
       return <section className="workspace-empty">Owner controls are not available in this runtime.</section>;
     }
 
+    let content: ReactNode;
     switch (ownerWorkspaceTab) {
       case "inventory":
-        return renderOwnerInventoryWorkspace();
+        content = renderOwnerInventoryWorkspace();
+        break;
       case "terms":
-        return renderOwnerTermsWorkspace();
+        content = renderOwnerTermsWorkspace();
+        break;
       case "network":
-        return renderOwnerNetworkWorkspace();
+        content = renderOwnerNetworkWorkspace();
+        break;
       case "publish":
-        return renderOwnerPublishWorkspace();
+        content = renderOwnerPublishWorkspace();
+        break;
       case "goods":
       default:
-        return renderOwnerGoodsWorkspace();
+        content = renderOwnerGoodsWorkspace();
+        break;
     }
+
+    return (
+      <div className="workspace-stack">
+        {renderOwnerReadOnlyNotice()}
+        <fieldset className="workspace-fieldset" disabled={runtimeEnvironment !== "localnet" && !ownerActionsEnabled}>
+          {content}
+        </fieldset>
+      </div>
+    );
   }
 
   function renderFullOwnerWorkspace() {
     return (
       <div className="workspace-stack">
-        {renderOwnerGoodsWorkspace()}
-        {renderOwnerInventoryWorkspace()}
-        {renderOwnerTermsWorkspace()}
-        {renderOwnerNetworkWorkspace()}
-        {renderOwnerPublishWorkspace()}
+        {renderOwnerReadOnlyNotice()}
+        <fieldset className="workspace-fieldset" disabled={runtimeEnvironment !== "localnet" && !ownerActionsEnabled}>
+          <div className="workspace-stack">
+            {renderOwnerGoodsWorkspace()}
+            {renderOwnerInventoryWorkspace()}
+            {renderOwnerTermsWorkspace()}
+            {renderOwnerNetworkWorkspace()}
+            {renderOwnerPublishWorkspace()}
+          </div>
+        </fieldset>
       </div>
     );
   }
@@ -2581,20 +2792,24 @@ function App() {
       : isVisitorMode || fullWorkspaceTab === "trade"
         ? tradeBlockedReason ?? compactTradeCopy
         : isOwnerMode && ownerWorkspaceTab === "inventory"
-          ? !runtime
+          ? ownerReadOnlyReason
+            ? ownerReadOnlyReason
+            : !runtime
             ? runtimeUnavailableReason
             : isProcurementMode
               ? "Use Inventory to stock shelf goods, claim procurement receipts, or restock them onto the shelf."
               : "Use Inventory to move goods from your cargo here onto the public shelf."
           : isOwnerMode || fullWorkspaceTab === "owner"
-          ? !runtime
+          ? ownerReadOnlyReason
+            ? ownerReadOnlyReason
+            : !runtime
             ? runtimeUnavailableReason
             : hasPendingPolicyChanges || hasPendingNetworkChanges
               ? "Draft changes are pending publication."
               : "Published rules match the current draft."
           : isFullMode && fullWorkspaceTab === "proof"
             ? "Proof and discovery tools stay isolated from the normal interaction surfaces."
-            : currentViewDefinition[viewMode].description;
+            : currentViewDefinition[effectiveViewMode].description;
 
   const showTradeActions = isVisitorMode || (isFullMode && fullWorkspaceTab === "trade");
   const showOwnerActions =
@@ -2623,6 +2838,7 @@ function App() {
                 actionState.status === "pending" ||
                 !runtime ||
                 !runtime.ownerCharacterId ||
+                !ownerActionsEnabled ||
                 resolvedSnapshot.policy.isFrozen ||
                 !ownerActor
               }
@@ -2638,6 +2854,7 @@ function App() {
                 actionState.status === "pending" ||
                 !runtime ||
                 !runtime.ownerCharacterId ||
+                !ownerActionsEnabled ||
                 resolvedSnapshot.policy.isFrozen ||
                 !ownerActor
               }
@@ -2653,6 +2870,7 @@ function App() {
                 actionState.status === "pending" ||
                 !runtime ||
                 !runtime.ownerCharacterId ||
+                !ownerActionsEnabled ||
                 resolvedSnapshot.policy.isFrozen ||
                 !ownerActor
               }
@@ -2664,7 +2882,7 @@ function App() {
           {showTradeActions ? (
             <button
               className="primary-action"
-              disabled={actionState.status === "pending" || Boolean(tradeBlockedReason)}
+              disabled={actionState.status === "pending" || !visitorActionsEnabled || Boolean(tradeBlockedReason)}
               onClick={() => void handleTrade()}
             >
               {tradeButtonLabel}
@@ -2729,7 +2947,9 @@ function App() {
         </div>
       </header>
 
-      <section className={`shell-layout view-${viewMode}`}>
+      {renderCharacterSelectionPanel()}
+
+      <section className={`shell-layout view-${effectiveViewMode}`}>
         {renderLeftRail()}
         <section className="shell-panel workspace-shell">
           {renderActiveWorkspaceTabs()}

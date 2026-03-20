@@ -57,6 +57,14 @@ The main remaining blocker is operational, not architectural:
 
 - we still need one controlled Utopia storage unit running Barter Box with real inventory and live hosted writes
 
+Current identity and access rules:
+
+- owner = current onchain owner/capability holder of the storage unit
+- in-game owner defaults into `owner`
+- in-game non-owner defaults into `visitor`
+- non-owner does not get owner controls in-game
+- multiple-character wallets require explicit character selection before live writes
+
 Still in progress:
 
 - final visitor and owner UI polish
@@ -210,6 +218,12 @@ Hosted URL contract:
   - `https://<host>/?tenant=utopia&itemId=<item_id>&view=visitor`
 
 `tenant` and `itemId` provide world context. `view` controls presentation only.
+
+In-game note:
+
+- the app now applies ownership-based defaulting and gating after world context resolves
+- owner defaults to `owner`
+- non-owner defaults to `visitor`
 
 Cloudflare Pages is the primary host. Vercel stays available as a fallback.
 

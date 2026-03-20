@@ -2,6 +2,12 @@ import type { CatalogItem, LockerPolicyDraft } from "../trust-locker.config";
 
 export type UiMode = "full" | "owner" | "visitor";
 export type RuntimeEnvironment = "localnet" | "utopia-browser" | "utopia-in-game";
+export type CharacterResolutionStatus =
+  | "none"
+  | "single"
+  | "multiple_needs_selection"
+  | "owner_selected"
+  | "visitor_selected";
 
 export type RelationshipBucket = "friendly" | "neutral" | "rival";
 export type LockerTrustStatus = "mutable" | "frozen";
@@ -42,6 +48,12 @@ export type UiCapabilities = {
   showVisitorWorkspace: boolean;
   showOwnerWorkspace: boolean;
   showGuidedFullFlow: boolean;
+  showModeToggle: boolean;
+  allowedViewModes: UiMode[];
+  requestedViewMode: UiMode;
+  effectiveViewMode: UiMode;
+  ownerActionsEnabled: boolean;
+  visitorActionsEnabled: boolean;
 };
 
 export type OwnerState = {
@@ -118,6 +130,22 @@ export type LockerRuntimeContext = {
   defaultViewMode: UiMode;
 };
 
+export type WalletCharacterCandidate = {
+  id: string;
+  address: string;
+  name: string;
+  characterItemId: number;
+  matchesOwner: boolean;
+};
+
+export type LockerIdentityState = {
+  assemblyOwnerCharacterId: string;
+  resolvedWalletCharacters: WalletCharacterCandidate[];
+  selectedWalletCharacterId: string | null;
+  isCurrentCharacterOwner: boolean;
+  characterResolutionStatus: CharacterResolutionStatus;
+};
+
 export type LockerDataEnvelope = {
   snapshot: LockerSnapshot;
   source: LockerDataSource;
@@ -125,4 +153,5 @@ export type LockerDataEnvelope = {
   runtime?: LockerRuntimeContext;
   runtimeEnvironment?: RuntimeEnvironment;
   capabilities?: UiCapabilities;
+  identity?: LockerIdentityState;
 };

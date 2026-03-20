@@ -12,6 +12,11 @@ This document is the canonical path from the current repo state to a functional,
 - Hosted Utopia is currently `browser read-ready`, not `browser owner-ready`.
 - The remaining blocker is operational, not architectural:
   - we still need one controlled Utopia storage unit running Barter Box with real inventory and live wallet-backed writes.
+- Identity and gating are now implementation-level constraints:
+  - owner = current onchain owner/capability holder
+  - in-game owner defaults to `owner`
+  - in-game non-owner defaults to `visitor`
+  - multiple-character wallets require explicit selection before live writes
 
 ## Stage 1: Controlled Utopia Unit Preparation
 
@@ -22,6 +27,7 @@ Tasks:
 - confirm edit permission for its custom URL
 - authorize the Barter Box extension on that unit
 - configure the unit against the live testnet package and extension config
+- record the storage unit's onchain owner character ID
 - verify the unit resolves through:
   - `?tenant=utopia&itemId=<unit>&view=owner`
   - `?tenant=utopia&itemId=<unit>&view=visitor`
@@ -32,6 +38,7 @@ Acceptance:
 - hosted owner and visitor views resolve live state for that same unit
 - the operator can print the exact owner/visitor/admin hosted URLs from:
   - `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff`
+- the owner character ID is known before live proof capture begins
 
 ## Stage 2: Live Demo Inventory Provisioning
 
@@ -63,12 +70,15 @@ Tasks:
 - execute one hosted visitor trade
 - in procurement mode, execute one hosted `Claim` or `Restock`
 - capture screenshots and transaction digests for each
+- capture the selected wallet character ID for each proof step
 
 Acceptance:
 - all actions succeed wallet-backed on hosted Cloudflare
 - bottom-strip action feedback is correct for pending, success, error, and blocked states
 - no localnet-only or debug-only copy leaks into `owner` or `visitor`
 - any failure is captured with the exact runtime or platform blocker
+- owner actions are demonstrated only with the owner-matching character
+- visitor trade is demonstrated with an explicitly selected visitor character
 
 Release rule:
 - do not call the project `browser owner-ready` until this stage passes
@@ -79,9 +89,10 @@ Goal: prove the real product path inside EVE Frontier.
 
 Tasks:
 - set the owned unit custom URL to the hosted Barter Box app
-- default the in-game path to `view=visitor`
 - verify `F` opens the hosted app with the live unit context
-- verify the owner can switch into `owner` mode
+- verify owner opens into `owner` by default
+- verify non-owner opens into `visitor` by default
+- verify owner can switch into `visitor`
 - run one in-game visitor trade
 - run one in-game owner action if supported by the live environment
 

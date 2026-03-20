@@ -58,6 +58,12 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - Public Utopia object discovery is not enough for final proof:
   - public `itemId`s are valid for context resolution
   - final owner/visitor validation requires one controlled Utopia storage unit running Barter Box
+- Identity and view gating assumptions are now explicit:
+  - owner = current onchain owner/capability holder of the unit
+  - in-game owner defaults to `owner`
+  - in-game non-owner defaults to `visitor`
+  - non-owner does not get the owner toggle in-game
+  - multiple-character wallets require explicit character selection before live writes
 
 ## Migration Stages
 
@@ -111,6 +117,8 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - If the owner-flow includes market-mode setup, keep that in `view=owner` and document it separately from the in-game visitor path.
 - Validate the in-game `F` interaction opens the hosted app.
 - Confirm owner-specific controls appear only for owner-capable accounts.
+- Confirm owner opens into `owner` by default and can still switch to `visitor`.
+- Confirm non-owner opens into `visitor` and does not see the owner toggle.
 - Treat this as the real in-game integration milestone.
 
 ### Stage D: Post-Cutover Hardening
@@ -138,6 +146,9 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm the external browser path opens a real Utopia object with `?tenant=utopia&itemId=...&view=full`.
 - [ ] Confirm EVE Vault connects cleanly for Utopia validation.
 - [ ] Confirm the app resolves the assembly context from a real `itemId`.
+- [ ] Confirm the app records the assembly owner character correctly from smart-object context.
+- [ ] Confirm a single wallet character auto-selects correctly.
+- [ ] Confirm multiple wallet characters require explicit selection before writes.
 - [ ] Confirm the Cloudflare Pages env vars for the Barter Box package/config are set.
 - [ ] Confirm the UI does not expose localnet-only demo signer controls in owner or visitor mode.
 - [ ] Confirm `Load public Utopia objects` offers direct `Open in Visitor` / `Open in Owner` handoff actions.
@@ -150,6 +161,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm owner-ready is not claimed until those inventory actions are validated live.
 - [ ] Confirm the chosen validation unit is a controlled Barter Box-enabled Utopia storage unit, not just a public context sample.
 - [ ] Confirm owner and visitor inventories on that unit are populated enough to exercise the live flows.
+- [ ] Record the selected wallet character ID used for each owner and visitor proof step.
 
 ### Utopia Cutover
 
@@ -157,7 +169,9 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm you have permission to edit that unit’s custom URL.
 - [ ] Set the custom URL to the hosted Barter Box app.
 - [ ] Use the in-game `F` interaction to open the hosted app from the unit.
-- [ ] Confirm the in-game browser lands in `view=visitor` by default.
+- [ ] Confirm the in-game browser lands in `owner` for the onchain owner.
+- [ ] Confirm the in-game browser lands in `visitor` for a non-owner.
+- [ ] Confirm non-owner does not get the owner toggle.
 - [ ] Capture the final hosted URL and cutover proof for submission.
 
 ### Cutover Preconditions

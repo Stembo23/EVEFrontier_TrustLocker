@@ -2,12 +2,15 @@ import { getWalletCharacters, parseCharacterFromJson } from "@evefrontier/dapp-k
 import { createDemoSnapshot } from "./demoData";
 import { resolveLocalnetLockerSnapshot, resolveRuntimeSnapshot } from "./liveLocalnet";
 import type {
+  CharacterResolutionStatus,
   LockerDataEnvelope,
   LockerDataSource,
+  LockerIdentityState,
   LockerSnapshot,
   RuntimeEnvironment,
   UiCapabilities,
   UiMode,
+  WalletCharacterCandidate,
 } from "./models";
 import { buildHostedUtopiaRuntime, isLocalRuntimeHost, readHostedUtopiaConfig } from "./runtimeConfig";
 
@@ -23,6 +26,8 @@ type ProviderInput = {
   walletAddress?: string | null;
   tenant?: string | null;
   viewMode: UiMode;
+  selectedWalletCharacterId?: string | null;
+  isInGameClient?: boolean;
 };
 
 function applyAssemblyContext(
@@ -46,21 +51,127 @@ function applyAssemblyContext(
 
 function resolveRuntimeEnvironment(args: {
   tenant?: string | null;
-  viewMode: UiMode;
   runtimeNetwork?: "localnet" | "utopia";
+  isInGameClient?: boolean;
 }): RuntimeEnvironment {
   if (args.runtimeNetwork === "localnet") return "localnet";
-  if (args.tenant === "utopia") {
-    return args.viewMode === "visitor" ? "utopia-in-game" : "utopia-browser";
-  }
-  return args.viewMode === "visitor" ? "utopia-in-game" : "utopia-browser";
+  if (args.tenant === "utopia" && args.isInGameClient) return "utopia-in-game";
+  return "utopia-browser";
 }
 
-function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode: UiMode): UiCapabilities {
-  const isFull = viewMode === "full";
-  const isOwner = viewMode === "owner";
-  const isVisitor = viewMode === "visitor";
+function deriveCharacterResolutionStatus(args: {
+  selectedWalletCharacterId: string | null;
+  resolvedWalletCharacters: WalletCharacterCandidate[];
+  isCurrentCharacterOwner: boolean;
+}): CharacterResolutionStatus {
+  if (args.resolvedWalletCharacters.length === 0) return "none";
+  if (args.resolvedWalletCharacters.length === 1) {
+    return args.isCurrentCharacterOwner ? "owner_selected" : "single";
+  }
+  if (!args.selectedWalletCharacterId) return "multiple_needs_selection";
+  return args.isCurrentCharacterOwner ? "owner_selected" : "visitor_selected";
+}
+
+async function resolveWalletCharacters(
+  walletAddress?: string | null,
+  assemblyOwnerCharacterId?: string | null,
+): Promise<WalletCharacterCandidate[]> {
+  if (!walletAddress) return [];
+  const response = await getWalletCharacters(walletAddress);
+  const nodes = response.data?.address?.objects?.nodes ?? [];
+  const deduped = new Map<string, WalletCharacterCandidate>();
+
+  for (const node of nodes) {
+    const json = (node as { asMoveObject?: { contents?: { json?: Record<string, unknown> } | null } | null })
+      ?.asMoveObject?.contents?.json;
+    const character = parseCharacterFromJson(json);
+    if (!character?.id) continue;
+
+    deduped.set(character.id, {
+      id: character.id,
+      address: character.address,
+      name: character.name || `Character ${character.characterId || character.id.slice(0, 6)}`,
+      characterItemId: character.characterId,
+      matchesOwner: Boolean(assemblyOwnerCharacterId && character.id === assemblyOwnerCharacterId),
+    });
+  }
+
+  return Array.from(deduped.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
+  );
+}
+
+function resolveIdentityState(args: {
+  assemblyOwnerCharacterId?: string | null;
+  resolvedWalletCharacters: WalletCharacterCandidate[];
+  selectedWalletCharacterId?: string | null;
+}): LockerIdentityState {
+  const assemblyOwnerCharacterId = args.assemblyOwnerCharacterId?.trim() ?? "";
+  const selectedWalletCharacterId = args.resolvedWalletCharacters.some(
+    (candidate) => candidate.id === args.selectedWalletCharacterId,
+  )
+    ? args.selectedWalletCharacterId ?? null
+    : args.resolvedWalletCharacters.length === 1
+      ? args.resolvedWalletCharacters[0]?.id ?? null
+      : null;
+  const isCurrentCharacterOwner = Boolean(
+    selectedWalletCharacterId &&
+      assemblyOwnerCharacterId &&
+      selectedWalletCharacterId === assemblyOwnerCharacterId,
+  );
+
+  return {
+    assemblyOwnerCharacterId,
+    resolvedWalletCharacters: args.resolvedWalletCharacters,
+    selectedWalletCharacterId,
+    isCurrentCharacterOwner,
+    characterResolutionStatus: deriveCharacterResolutionStatus({
+      selectedWalletCharacterId,
+      resolvedWalletCharacters: args.resolvedWalletCharacters,
+      isCurrentCharacterOwner,
+    }),
+  };
+}
+
+function resolveUiCapabilities(
+  runtimeEnvironment: RuntimeEnvironment,
+  requestedViewMode: UiMode,
+  identity: LockerIdentityState,
+): UiCapabilities {
   const isLocalnet = runtimeEnvironment === "localnet";
+  const isInGame = runtimeEnvironment === "utopia-in-game";
+  const ownerActionsEnabled = isLocalnet || identity.isCurrentCharacterOwner;
+  const visitorActionsEnabled =
+    isLocalnet ||
+    identity.characterResolutionStatus === "single" ||
+    identity.characterResolutionStatus === "owner_selected" ||
+    identity.characterResolutionStatus === "visitor_selected";
+
+  let allowedViewModes: UiMode[];
+  if (isLocalnet) {
+    allowedViewModes = ["visitor", "owner", "full"];
+  } else if (isInGame) {
+    allowedViewModes = identity.isCurrentCharacterOwner ? ["visitor", "owner"] : ["visitor"];
+  } else {
+    allowedViewModes = ["visitor", "owner", "full"];
+  }
+
+  const fallbackViewMode =
+    isInGame
+      ? identity.isCurrentCharacterOwner
+        ? "owner"
+        : "visitor"
+      : requestedViewMode === "full"
+        ? "full"
+        : requestedViewMode === "owner"
+          ? "owner"
+          : "visitor";
+  const effectiveViewMode = allowedViewModes.includes(requestedViewMode)
+    ? requestedViewMode
+    : fallbackViewMode;
+  const isFull = effectiveViewMode === "full";
+  const isOwner = effectiveViewMode === "owner";
+  const isVisitor = effectiveViewMode === "visitor";
 
   return {
     showDemoSigner: isFull && isLocalnet,
@@ -73,18 +184,13 @@ function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode:
     showVisitorWorkspace: isFull || isVisitor,
     showOwnerWorkspace: isFull || isOwner,
     showGuidedFullFlow: isFull,
+    showModeToggle: allowedViewModes.length > 1,
+    allowedViewModes,
+    requestedViewMode,
+    effectiveViewMode,
+    ownerActionsEnabled,
+    visitorActionsEnabled,
   };
-}
-
-async function resolveWalletCharacterId(walletAddress?: string | null): Promise<string | null> {
-  if (!walletAddress) return null;
-  const response = await getWalletCharacters(walletAddress);
-  const node = response.data?.address?.objects?.nodes?.[0] as
-    | { asMoveObject?: { contents?: { json?: Record<string, unknown> } | null } | null }
-    | undefined;
-  const json = node?.asMoveObject?.contents?.json;
-  const character = parseCharacterFromJson(json);
-  return character?.id || null;
 }
 
 export async function resolveLockerData(input: ProviderInput): Promise<LockerDataEnvelope> {
@@ -92,9 +198,18 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
   const notes: string[] = [];
   let source: LockerDataSource = "demo";
   let runtime: LockerDataEnvelope["runtime"];
+  const resolvedWalletCharacters = await resolveWalletCharacters(
+    input.walletAddress,
+    input.assemblyOwner?.id,
+  );
+  const identity = resolveIdentityState({
+    assemblyOwnerCharacterId: input.assemblyOwner?.id,
+    resolvedWalletCharacters,
+    selectedWalletCharacterId: input.selectedWalletCharacterId,
+  });
   let runtimeEnvironment = resolveRuntimeEnvironment({
     tenant: input.tenant,
-    viewMode: input.viewMode,
+    isInGameClient: input.isInGameClient,
   });
   const ownerLabel =
     input.assemblyOwner?.name?.trim() ||
@@ -129,8 +244,8 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
       runtime = localnet.runtime;
       runtimeEnvironment = resolveRuntimeEnvironment({
         tenant: input.tenant,
-        viewMode: input.viewMode,
         runtimeNetwork: localnet.runtime?.network,
+        isInGameClient: input.isInGameClient,
       });
     } catch (error) {
       notes.push(
@@ -146,13 +261,12 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
       );
     } else {
       try {
-        const visitorCharacterId = await resolveWalletCharacterId(input.walletAddress);
         const utopiaRuntime = buildHostedUtopiaRuntime({
           assemblyId: input.assemblyId,
-          ownerCharacterId: input.assemblyOwner?.id,
-          visitorCharacterId,
+          ownerCharacterId: identity.assemblyOwnerCharacterId,
+          visitorCharacterId: identity.selectedWalletCharacterId,
           tenant: input.tenant,
-          defaultViewMode: "visitor",
+          defaultViewMode: identity.isCurrentCharacterOwner ? "owner" : "visitor",
         });
 
         const utopia = await resolveRuntimeSnapshot({
@@ -174,8 +288,8 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
         runtime = utopia.runtime;
         runtimeEnvironment = resolveRuntimeEnvironment({
           tenant: input.tenant,
-          viewMode: input.viewMode,
           runtimeNetwork: utopia.runtime.network,
+          isInGameClient: input.isInGameClient,
         });
       } catch (error) {
         notes.push(
@@ -193,12 +307,19 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
     notes.push("No live runtime was selected, so the curated Barter Box snapshot remains active.");
   }
 
+  if (input.walletAddress && identity.characterResolutionStatus === "multiple_needs_selection") {
+    notes.push("Multiple wallet characters are available. Choose one before attempting live owner or visitor actions.");
+  } else if (input.walletAddress && identity.characterResolutionStatus === "none") {
+    notes.push("No live character was resolved for the connected wallet.");
+  }
+
   return {
     snapshot,
     source,
     notes,
     runtime,
     runtimeEnvironment,
-    capabilities: resolveUiCapabilities(runtimeEnvironment, input.viewMode),
+    identity,
+    capabilities: resolveUiCapabilities(runtimeEnvironment, input.viewMode, identity),
   };
 }

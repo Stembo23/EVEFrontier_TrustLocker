@@ -2,6 +2,33 @@
 
 Use this handoff when a teammate has a real Utopia storage unit and needs to finish the live validation path.
 
+## Identity and Access Rules
+
+These rules are now locked in product and implementation:
+
+- `owner` means the current onchain owner or capability holder of the storage unit
+- Barter Box does not rely on "original builder forever" as the owner source of truth
+- in-game:
+  - owner defaults into `owner`
+  - owner may switch to `visitor`
+  - non-owner defaults into `visitor`
+  - non-owner does not get the owner toggle
+  - `Admin` is hidden
+- external browser:
+  - `Admin` remains available for proof and debugging
+  - `owner` and `visitor` routes may still be opened directly
+  - owner actions stay blocked unless the selected wallet character matches the onchain owner
+- if a wallet resolves multiple characters:
+  - the app must not guess
+  - the operator must explicitly choose one before live writes
+
+Proof rule:
+
+- every live proof step should record:
+  - assembly owner character ID
+  - selected wallet character ID
+  - whether that step is an owner or visitor action
+
 ## What Barter Box Is
 
 Barter Box turns a Smart Storage Unit into a programmable player-run market.
@@ -195,6 +222,17 @@ Treat the project as submission-ready only when all of these are true:
 - the proof docs reflect the real live path
 - no open high-severity correctness issues remain
 
+### Identity and gating checklist
+
+- [x] onchain owner is the owner source of truth
+- [x] same-item trade is blocked in the browser flow
+- [x] owner/visitor/admin views are separated in the app shell
+- [x] multiple-character wallets require explicit selection before hosted writes
+- [x] non-owner hosted `owner` route is read-only
+- [x] in-game owner/non-owner view gating is ownership-based
+- [ ] prove those identity assumptions on one controlled Utopia unit
+- [ ] capture owner-character and visitor-character evidence in the final proof set
+
 ## What This Handoff Assumes
 
 - Cloudflare Pages is already deploying from `main`
@@ -257,6 +295,8 @@ Before any proof capture:
 - confirm the app resolves live state for that exact unit
 - confirm the unit is actually Barter Box-enabled
 - confirm the owner wallet can attempt live actions
+- record the assembly owner character ID shown by the runtime
+- record which wallet character the app selected or required you to select
 
 Do not use a random public object as the final validation target.
 
@@ -275,6 +315,12 @@ Recommended minimum:
 - Visitor: one accepted payment item
 - Procurement: one scenario that yields non-empty `Claimable by owner`
 
+Important:
+
+- `Items you are offering for trade` is the owner character inventory inside the same unit
+- `Claimable by owner` is procurement-only owner receipt inventory inside the same unit
+- the current launch path still assumes same-storage-unit inventory movement, not a full player-global inventory UX inside Barter Box
+
 ## Step 4: Hosted Validation Sequence
 
 Run these in order on the same controlled unit:
@@ -289,6 +335,8 @@ Capture for each:
 - screenshot
 - transaction digest
 - whether the bottom-strip action feedback was correct
+- assembly owner character ID
+- selected wallet character ID
 
 ## Step 5: In-Game Cutover
 

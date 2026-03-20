@@ -81,6 +81,14 @@ button {
   text-align: center;
 }
 
+.workspace-fieldset {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .eyebrow,
 .section-label,
 .mode-hint,
@@ -114,6 +122,26 @@ button {
   gap: 12px;
   align-items: start;
   padding: 10px 14px 8px;
+}
+
+.character-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.character-panel-copy,
+.character-panel-controls,
+.character-panel-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.character-panel-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .command-main {
@@ -368,6 +396,10 @@ button {
   color: var(--muted);
 }
 
+.workspace-fieldset:disabled {
+  opacity: 0.72;
+}
+
 .selection-grid,
 .field-grid {
   display: grid;
@@ -389,7 +421,8 @@ button {
 
 .field-block input,
 .field-block select,
-.catalog-row input {
+.catalog-row input,
+.character-panel-controls select {
   width: 100%;
   min-height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -789,7 +822,8 @@ button {
 
   .selection-grid,
   .field-grid,
-  .metrics-grid {
+  .metrics-grid,
+  .character-panel {
     grid-template-columns: 1fr;
   }
 
