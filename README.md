@@ -2,6 +2,15 @@
 
 Barter Box is a programmable Smart Storage Unit extension for EVE Frontier.
 
+## Start Here
+
+If you are joining the project midstream, read these first:
+
+- [Controlled Utopia handoff](notes/trust-locker/CONTROLLED-UTOPIA-HANDOFF.md)
+- [Launch roadmap](notes/trust-locker/LAUNCH-ROADMAP.md)
+- [Phase 2 in-game deployment](notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md)
+- [Project status](notes/trust-locker/STATUS.md)
+
 It turns a storage unit into a player-run social market:
 
 - owners define which item types the locker accepts
@@ -27,22 +36,59 @@ It turns a storage unit into a player-run social market:
 
 The project is beyond the initial MVP and currently includes:
 
-- local/testnet end-to-end trading flows
-- browser-based full, owner, and visitor interactions
+- localnet end-to-end trading flows
+- browser-based admin, owner, and visitor interactions
 - three UI modes:
   - `view=full` for judging, debugging, and proof capture
   - `view=owner` for guided setup and control
   - `view=visitor` for player-facing assembly interaction
 - owner-defined shared strike networks across multiple lockers
-- local proof flows and Utopia read-only context validation
+- owner inventory movement inside the same storage unit
+- local proof flows and hosted Utopia context validation
+
+Current release state:
+
+- `browser read-ready` on hosted Utopia object context
+- not yet `browser owner-ready`
+- not yet in-game cutover-ready
+- not yet submission-closed
+
+The main remaining blocker is operational, not architectural:
+
+- we still need one controlled Utopia storage unit running Barter Box with real inventory and live hosted writes
 
 Still in progress:
 
 - final visitor and owner UI polish
 - controlled Utopia unit preparation and hosted live validation
 - owned-Utopia in-game cutover
-- final owner-incentive live proof on a controlled unit
+- final live proof for procurement/perpetual owner flows on a controlled unit
 - final audit signoff
+
+## Product Summary
+
+Barter Box is intentionally not a global price oracle.
+
+Instead:
+
+- the owner publishes a ruleset
+- the visitor inspects that ruleset
+- the assembly enforces the published policy consistently
+
+The owner-incentive model currently has two explicit modes:
+
+- `perpetual_market`
+  - a circulating storefront
+  - visitor payments return to shelf circulation
+- `procurement_market`
+  - a standing acquisition post
+  - visitor payments route into the same storage unit owner reserve and become claimable by the owner
+
+Current owner and visitor motivations:
+
+- owners use Barter Box to stock useful goods, attract trade, and control the rules around their unit
+- visitors use Barter Box to inspect a shelf, compare their cargo against the requested terms, and decide whether the trade is worth it
+- underpay remains possible, but it produces strikes and cooldowns instead of silently changing the rules or blocking the visitor outright
 
 ## Core Design
 
@@ -90,6 +136,8 @@ If the visitor underpays:
 - the trade can still execute
 - the locker records a strike
 - the locker applies a cooldown
+
+Same-item trades are intentionally blocked in the browser flow for v1.
 
 ### Shared strike persistence
 
@@ -175,6 +223,14 @@ Near-term priorities:
 - point that same controlled unit at the hosted app and validate the `F` interaction path
 - complete the final Move/runtime audit pass and submission proof package
 
+Release gates:
+
+1. controlled Utopia unit prepared
+2. live owner and visitor inventory provisioned
+3. hosted owner policy save / stock / claim-restock / visitor trade proven
+4. in-game `F` cutover proven on that same unit
+5. submission proof and audit freeze complete
+
 Deferred:
 
 - world-global reputation across all lockers
@@ -184,6 +240,7 @@ Deferred:
 
 Key project notes:
 
+- [Controlled Utopia handoff](notes/trust-locker/CONTROLLED-UTOPIA-HANDOFF.md)
 - [Barter Box workspace README](apps/utopia-smart-assembly/README.md)
 - [Agent contract](AGENTS.md)
 - [Project status](notes/trust-locker/STATUS.md)
