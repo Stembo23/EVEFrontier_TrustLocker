@@ -252,6 +252,11 @@ button {
   gap: 12px;
 }
 
+.shell-layout.view-visitor,
+.shell-layout.view-owner {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
 .left-rail,
 .workspace-shell {
   min-height: 0;
@@ -266,7 +271,8 @@ button {
 
 .visitor-rail,
 .owner-rail {
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: 1fr;
 }
 
 .full-rail {
@@ -549,7 +555,7 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .bottom-status {
@@ -611,6 +617,11 @@ button {
 @media (max-width: 1180px) {
   .shell-layout {
     grid-template-columns: 280px minmax(0, 1fr);
+  }
+
+  .shell-layout.view-visitor,
+  .shell-layout.view-owner {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   }
 
   .metrics-grid {
