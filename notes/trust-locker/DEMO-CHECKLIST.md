@@ -14,6 +14,8 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 - [x] Internal audit findings are triaged.
 - [ ] External auditor findings are triaged.
 - [ ] Controlled Utopia storage unit opens the hosted app via `F`.
+- [ ] One controlled Utopia storage unit is Barter Box-enabled and available for final proof.
+- [ ] That same controlled unit is populated with owner and visitor inventory.
 - [ ] Owner-incentive documentation is consistent with the Fuel-fee no-go result and the `perpetual_market` / `procurement_market` fallback.
 
 ## Demo Readiness Gate
@@ -84,3 +86,8 @@ This checklist is for the localnet-first demo run before Utopia public hardening
 - [ ] Final demo script explicitly notes the exact current remaining proof gaps, rather than implying full Utopia wallet-backed validation is already captured.
 - [x] Utopia read-only/context validation is demonstrated with a real public `itemId`.
 - [x] Demo language states that public object context loaded successfully even though the sampled external behavior deployment returned `DEPLOYMENT_NOT_FOUND`.
+- [ ] Recorded run shows hosted owner policy write on the controlled Utopia unit.
+- [ ] Recorded run shows hosted `Stock shelf` on the controlled Utopia unit.
+- [ ] Recorded run shows hosted visitor trade on the controlled Utopia unit.
+- [ ] Recorded run shows procurement `Claim` or `Restock` if procurement mode is part of the submission story.
+- [ ] Recorded run shows in-game `F` opening the controlled Utopia unit.

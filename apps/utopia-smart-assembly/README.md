@@ -30,6 +30,7 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
   - Utopia public hardening
   - owned Utopia cutover last
 - Use [`notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md) as the source of truth for the in-game hosting and cutover checklist.
+- Use [`notes/trust-locker/LAUNCH-ROADMAP.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/LAUNCH-ROADMAP.md) as the source of truth for the remaining path from current repo state to hackathon submission.
 - Use [`notes/trust-locker/FUEL-FEE-FEASIBILITY.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/FUEL-FEE-FEASIBILITY.md) as the source of truth for the owner-incentive Fuel decision.
 - Keep the package compatible with Utopia and EVE Vault-style browser flows
 - Treat owned Utopia in-game deployment as a late-stage milestone, not an assumption
@@ -43,6 +44,9 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
   - `perpetual_market` should only expose shelf circulation
   - `procurement_market` should expose `Claimable by owner`
   - hosted Utopia owner testing is not complete until stock/claim flow is integrated and validated live, or explicitly blocked by the platform
+- Treat public Utopia object discovery honestly:
+  - it is enough for hosted context validation
+  - it is not enough for final owner/visitor proof without a controlled Barter Box-enabled unit
 - Run a dual audit gate before calling Phase 2 complete
 - Treat the final owner and visitor UI passes as a work in progress, not a finished visual pass
 
@@ -126,6 +130,11 @@ Barter Box turns a Storage Unit into a programmable social market:
 - localnet browser writes now use a gated unsafe local-only demo signer for repeatable proof
 - the browser dApp now includes a Utopia object-discovery panel that can list owned objects and also query public Utopia storage units, gates, and network nodes for sample `item_id` values
 - the discovery panel now acts as a handoff surface into live hosted testing through direct `Open in Visitor` / `Open in Owner` actions
+- the final live proof still requires one controlled Utopia unit with:
+  - Barter Box authorized/configured
+  - real owner inventory
+  - real visitor inventory
+  - hosted wallet-backed actions proven
 - shared strike persistence is implemented through owner-defined strike networks
 - the UI supports three views:
   - `Full Detail` mode for judges/debug

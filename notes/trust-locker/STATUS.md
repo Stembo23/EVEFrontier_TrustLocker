@@ -42,6 +42,11 @@
   - owners can stock shelf goods from their owned inventory slot inside the same storage unit
   - procurement receipts can be claimed into that same owner-held inventory slot or restocked onto the shelf
   - hosted Utopia still needs live validation before the app can be called `browser owner-ready`
+- Launch planning is now explicit:
+  - public Utopia object discovery is treated as context validation only
+  - one controlled Utopia storage unit is required for final hosted and in-game proof
+  - the canonical path to submission is tracked in:
+    - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/LAUNCH-ROADMAP.md`
 
 ## Implemented
 
@@ -95,10 +100,12 @@
   - `pnpm deploy:cloudflare:prod`
 - New visitor funding script:
   - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/apps/utopia-smart-assembly/scripts/trust-locker/seed-visitor-inventory.ts`
+- Launch roadmap and gates are now documented in:
+  - `/Users/anthony/Documents/EVE Frontier Smart Assemblies/notes/trust-locker/LAUNCH-ROADMAP.md`
 
 ## Verified
 
-- `sui move test` passes with 13 tests.
+- `sui move test` passes with 17 tests.
 - `pnpm build` passes at head.
 - `pnpm locker:set-strike-network --dry-run` works.
 - `resolveLocalnetLockerSnapshot()` now resolves real localnet policy, inventory, and recent signal data without falling back to demo values.
@@ -127,6 +134,9 @@
 - Utopia context resolution succeeds in a human browser pass with EVE Vault:
   - tenant + itemId + EVE Vault load a real assembly context
   - the sampled public object's behavior panel returned `DEPLOYMENT_NOT_FOUND`, so Phase 2 must keep Utopia claims precise until we control an owned unit
+- The codebase now distinguishes two different live states:
+  - `browser read-ready` on public Utopia object context
+  - `browser owner-ready` only after hosted wallet-backed writes succeed on a controlled Utopia unit
 - External auditor deterministic Move scan completes with `0` findings, but the gate remains open because:
   - the prover stage fails in the auditor pipeline
   - the auditor CLI is Move-package oriented and does not scan the browser app directly
@@ -157,11 +167,17 @@
 ## Remaining Gaps
 
 - Final visual polish is still open. The app now has a darker EVE-style panel treatment and a more game-like visitor/owner information layout, but it still needs a stronger asset/icon pass before calling those views finished.
-- Owner-incentive implementation is still open in code, but the docs now define the intended market-mode split and the Fuel-fee no-go result so the product story stays honest.
+- Owner-incentive implementation is now materially in code:
+  - `perpetual_market` and `procurement_market` are implemented
+  - procurement receipts route into the same storage unit owner reserve
+  - same-unit stock/claim/restock owner flows are implemented
+  - the remaining gap is live validation on a controlled Utopia unit, not a missing localnet implementation
 - Hosted deployment and in-game custom URL cutover are documented and ready for a real Utopia storage-unit handoff.
 - Hosted Utopia now has two readiness stages:
   - `browser read-ready`
   - `browser owner-ready`
+- Submission-ready now has one explicit operational dependency:
+  - a controlled Utopia storage unit with real owner and visitor inventory plus live hosted validation
 - Phase 2 audit gate is partially complete:
   - internal review is documented
   - external deterministic Move scan is documented
@@ -175,6 +191,10 @@
   - stock/claim/restock are now wired for the same-storage-unit owner inventory path
   - hosted Utopia still needs live validation for those actions before owner-ready can be claimed
   - external game-inventory claim beyond the same storage unit remains a separate platform/question, not part of the current validated owner-ready gate
+- Controlled live proof is still missing:
+  - no owned Utopia unit has yet been validated end to end through hosted Cloudflare
+  - no in-game `F` cutover has yet been validated on an owned unit
+  - no final submission proof package exists yet for the controlled live path
 - Final visitor and owner visual polish is still open and should stay treated as WIP until the next asset pass.
 
 ## Deferred v2

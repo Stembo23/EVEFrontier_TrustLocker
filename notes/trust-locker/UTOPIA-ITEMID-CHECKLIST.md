@@ -1,6 +1,14 @@
 # Utopia ItemId Checklist
 
-Use this to obtain one real Utopia `itemId` for read-only validation.
+Use this to obtain one real Utopia `itemId` for hosted context validation.
+
+This checklist does not prove that the discovered object is Barter Box-enabled. Public `itemId`s are useful for:
+
+- tenant + itemId context resolution
+- hosted route validation
+- EVE Vault/browser sanity checks
+
+They are not sufficient for final launch proof. Final owner/visitor validation still requires one controlled Utopia storage unit running Barter Box with real owner and visitor inventory.
 
 ## What The Docs Say
 

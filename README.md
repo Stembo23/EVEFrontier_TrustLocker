@@ -39,8 +39,9 @@ The project is beyond the initial MVP and currently includes:
 Still in progress:
 
 - final visitor and owner UI polish
-- hosted deployment and owned-Utopia in-game cutover
-- owner-incentive mode implementation and the Fuel-fee feasibility follow-up
+- controlled Utopia unit preparation and hosted live validation
+- owned-Utopia in-game cutover
+- final owner-incentive live proof on a controlled unit
 - final audit signoff
 
 ## Core Design
@@ -168,14 +169,11 @@ Cloudflare Pages is the primary host. Vercel stays available as a fallback.
 
 Near-term priorities:
 
-- finish final owner and visitor UI polish
-- deploy the hosted app publicly
-- point a controlled Utopia storage unit at the hosted app
-- validate the visitor `F` interaction path
-- finish the owner-incentive model decision path:
-  - document the Fuel-fee feasibility result
-  - implement market-mode docs and UI language around `perpetual_market` and `procurement_market`
-- complete internal and external audit signoff
+- obtain one controlled Utopia storage unit and authorize/configure Barter Box on it
+- provision owner and visitor inventories on that unit
+- prove hosted wallet-backed owner policy save, stock, claim/restock, and visitor trade on that same unit
+- point that same controlled unit at the hosted app and validate the `F` interaction path
+- complete the final Move/runtime audit pass and submission proof package
 
 Deferred:
 
@@ -189,5 +187,6 @@ Key project notes:
 - [Barter Box workspace README](apps/utopia-smart-assembly/README.md)
 - [Agent contract](AGENTS.md)
 - [Project status](notes/trust-locker/STATUS.md)
+- [Launch roadmap](notes/trust-locker/LAUNCH-ROADMAP.md)
 - [Fuel-fee feasibility memo](notes/trust-locker/FUEL-FEE-FEASIBILITY.md)
 - [Phase 2 in-game deployment](notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md)

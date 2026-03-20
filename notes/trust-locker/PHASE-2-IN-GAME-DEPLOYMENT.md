@@ -2,6 +2,8 @@
 
 This is the canonical migration checklist for moving Barter Box from localnet proof into Utopia public hardening and owned-unit in-game cutover.
 
+Use [`LAUNCH-ROADMAP.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/LAUNCH-ROADMAP.md) as the stage-by-stage release gate. This document remains the deployment and cutover checklist.
+
 GitHub + Cloudflare Pages is the primary deployment path. Vercel remains a secondary fallback if needed. Any static-SPA host is acceptable if it preserves the same URL/query contract.
 
 ## Hosting Contract
@@ -53,6 +55,9 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - `perpetual_market` hides the owner-claim panel
   - `procurement_market` shows `Claimable by owner`
   - owner testing is not complete until stock/claim flow is integrated or a platform limitation is documented
+- Public Utopia object discovery is not enough for final proof:
+  - public `itemId`s are valid for context resolution
+  - final owner/visitor validation requires one controlled Utopia storage unit running Barter Box
 
 ## Migration Stages
 
@@ -85,6 +90,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - Treat this stage as `browser read-ready` until:
   - discovery can hand off directly into live owner/visitor URLs
   - a real `itemId` is being used in the hosted route
+- Do not treat public-object discovery as launch proof by itself; it only proves hosted object-context resolution.
 - If writes fail in Utopia, record the exact failure and keep Stage B as read-only plus context validation until fixed.
 - Do not call this stage `browser owner-ready` until all of the following succeed on hosted Utopia:
   - owner policy write
@@ -99,6 +105,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 ### Stage C: Owned Utopia Cutover
 
 - Obtain or control a real Utopia storage unit.
+- Confirm the unit is the exact unit used for hosted owner-ready validation, not just a random public object.
 - Confirm you can edit the unit’s custom URL.
 - Point the custom URL at the hosted Barter Box app with `view=visitor`.
 - If the owner-flow includes market-mode setup, keep that in `view=owner` and document it separately from the in-game visitor path.
@@ -141,6 +148,8 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm `Stock shelf` succeeds from `Items you are offering for trade`.
 - [ ] Confirm `Claim receipts` or `Restock from claimable` succeeds in procurement mode.
 - [ ] Confirm owner-ready is not claimed until those inventory actions are validated live.
+- [ ] Confirm the chosen validation unit is a controlled Barter Box-enabled Utopia storage unit, not just a public context sample.
+- [ ] Confirm owner and visitor inventories on that unit are populated enough to exercise the live flows.
 
 ### Utopia Cutover
 
@@ -155,6 +164,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 
 - [ ] Hosted URL is stable and public.
 - [ ] The app is already verified in standalone browser mode.
+- [ ] The app is already verified as `browser owner-ready` on the same controlled Utopia unit.
 - [ ] The app is already verified in the in-game browser on a controlled target.
 - [ ] The chosen Utopia unit is owned or otherwise editable.
 - [ ] The submission narrative stays honest about whether the cutover is read-only or writable.

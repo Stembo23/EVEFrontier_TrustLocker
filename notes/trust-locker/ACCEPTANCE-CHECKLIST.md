@@ -5,7 +5,12 @@ Use this checklist to accept or reject MVP readiness for hackathon submission.
 ## Product Contract Acceptance
 
 - [x] Product name is `Barter Box`; package/module identifiers remain unchanged.
-- [ ] v1 scope remains localnet-first, then Utopia public hardening and owned cutover.
+- [ ] Release path remains staged:
+  - [ ] localnet parity freeze
+  - [ ] Utopia public hardening / `browser read-ready`
+  - [ ] controlled-unit hosted validation / `browser owner-ready`
+  - [ ] owned in-game cutover
+  - [ ] submission freeze
 - [ ] No-scope-creep rules are preserved:
   - [ ] no multi-item baskets
   - [ ] no combat/NPC penalties
@@ -62,7 +67,30 @@ Use this checklist to accept or reject MVP readiness for hackathon submission.
 - [x] UI reads live localnet deployment state instead of demo fallback data.
 - [x] Localnet browser proof path no longer depends on a wallet extension with custom-RPC support.
 - [x] Cooldown-blocked trades are explained explicitly in the trade UI and disable the action with a visible reason.
+- [x] Owner inventory movement exists in-browser for the same storage unit:
+  - [x] stock shelf
+  - [x] claim receipts
+  - [x] restock from claimable
   Note: the live reader now resolves policy, inventory, penalties, and recent signals from localnet. Manual browser proof is still needed, but it now uses the unsafe local-only demo signer instead of a wallet extension.
+
+## Controlled Utopia Acceptance
+
+- [ ] One controlled Utopia storage unit is available and editable.
+- [ ] The exact controlled unit is Barter Box-enabled.
+- [ ] Hosted owner view resolves live state for that exact unit.
+- [ ] Hosted visitor view resolves live state for that exact unit.
+- [ ] Owner and visitor inventory are both populated enough to exercise live flows.
+- [ ] Hosted owner policy save succeeds on that unit.
+- [ ] Hosted `Stock shelf` succeeds on that unit.
+- [ ] Hosted `Claim receipts` or `Restock from claimable` succeeds when procurement state exists.
+- [ ] Hosted visitor trade succeeds on that unit.
+
+## In-Game Cutover Acceptance
+
+- [ ] The controlled unit custom URL points at the hosted Barter Box app.
+- [ ] In-game `F` opens the hosted app on the correct live unit.
+- [ ] Owner can access owner controls from the in-game flow.
+- [ ] Visitor can complete one meaningful live trade from the in-game flow.
 
 ## Demo Acceptance
 
@@ -76,8 +104,9 @@ Use this checklist to accept or reject MVP readiness for hackathon submission.
   - [ ] v1 boundaries
   - [ ] v2 global reputation deferred item
   - [ ] placeholder naming status
+  - [ ] public Utopia context validation is not the same as controlled live proof
 
 ## Go/No-Go Decision Rule
 
-- **Go** only if the local demo remains reproducible and the frontend read integration is either complete or explicitly deferred with a documented fallback.
-- **No-Go** if trade penalties, freeze trust signaling, or policy transparency are not demonstrable end-to-end.
+- **Go** only if localnet remains reproducible, hosted Utopia reaches `browser owner-ready` on one controlled unit, the in-game `F` cutover is proven on that unit, and the submission proof/docs match reality.
+- **No-Go** if live owner writes, live visitor trade, or the in-game cutover remain unproven on a controlled unit.
