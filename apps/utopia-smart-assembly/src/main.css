@@ -113,13 +113,13 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: start;
-  padding: 12px 14px;
+  padding: 10px 14px 8px;
 }
 
 .command-main {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .command-title {
@@ -129,7 +129,7 @@ button {
 
 .command-title h1 {
   margin: 0;
-  font-size: clamp(1.3rem, 1.8vw, 2rem);
+  font-size: clamp(1.15rem, 1.6vw, 1.7rem);
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -392,10 +392,11 @@ button {
   border-radius: 0;
 }
 
-.checkbox-field input {
-  width: 22px;
-  height: 22px;
-  min-height: 22px;
+.checkbox-field input,
+.catalog-main input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
   appearance: none;
   -webkit-appearance: none;
   border: 1px solid var(--line-strong);
@@ -406,26 +407,30 @@ button {
   cursor: pointer;
 }
 
-.checkbox-field input::after {
+.checkbox-field input::after,
+.catalog-main input[type="checkbox"]::after {
   content: "";
-  width: 6px;
-  height: 12px;
+  width: 5px;
+  height: 9px;
   border-right: 2px solid transparent;
   border-bottom: 2px solid transparent;
   transform: rotate(45deg) scale(0.85);
 }
 
-.checkbox-field input:checked {
+.checkbox-field input:checked,
+.catalog-main input[type="checkbox"]:checked {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
 }
 
-.checkbox-field input:checked::after {
+.checkbox-field input:checked::after,
+.catalog-main input[type="checkbox"]:checked::after {
   border-right-color: #fff;
   border-bottom-color: #fff;
 }
 
-.checkbox-field input:focus-visible {
+.checkbox-field input:focus-visible,
+.catalog-main input[type="checkbox"]:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: 2px;
 }

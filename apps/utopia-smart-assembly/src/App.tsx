@@ -248,6 +248,16 @@ function formatVolume(volumeM3: number, quantity = 1): string {
   return `${total.toFixed(2)} m3`;
 }
 
+function formatMultiplierValue(bps: number): string {
+  return `${(bps / 10000).toFixed(2)}x`;
+}
+
+function parseMultiplierInput(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.round(parsed * 10000));
+}
+
 function compactAddress(value: string, short = false): string {
   if (!value) return "n/a";
   return short ? abbreviateAddress(value) : value;
@@ -1105,10 +1115,9 @@ function App() {
       const content = (
         <>
           <div className="asset-row-main">
-            <span className={`tier-pill ${item.tier}`}>{item.tier}</span>
             <div className="asset-copy">
               <strong>{item.label}</strong>
-              <small>{quantityLabel} {item.quantity}</small>
+              <small>qty {item.quantity}</small>
             </div>
           </div>
           <div className="asset-row-meta">
@@ -1172,7 +1181,7 @@ function App() {
             <div className="selection-summary">
               <strong>{resolvedPreview.requestedItem.label}</strong>
               <span>
-                {requestedShelfEntry?.quantity ?? 0} shelf | {resolvedPreview.requestedItem.points} pts |{" "}
+                qty {requestedShelfEntry?.quantity ?? 0} | {resolvedPreview.requestedItem.points} pts |{" "}
                 {formatVolume(resolvedPreview.requestedItem.volumeM3, 1)}
               </span>
             </div>
@@ -1197,7 +1206,7 @@ function App() {
             <div className="selection-summary">
               <strong>{resolvedPreview.offeredItem.label}</strong>
               <span>
-                {offeredHoldEntry?.quantity ?? 0} hold | {resolvedPreview.offeredItem.points} pts |{" "}
+                qty {offeredHoldEntry?.quantity ?? 0} | {resolvedPreview.offeredItem.points} pts |{" "}
                 {formatVolume(resolvedPreview.offeredItem.volumeM3, 1)}
               </span>
             </div>
@@ -1268,8 +1277,10 @@ function App() {
         <div className="metrics-grid">
           {renderMetricTile("Market mode", marketModeSummary, "accent")}
           {renderMetricTile("Cooldown", `${resolvedSnapshot.policy.cooldownMs / 1000}s`)}
-          {renderMetricTile("Friendly", `${resolvedSnapshot.policy.friendlyMultiplierBps / 100}%`)}
-          {renderMetricTile("Rival", `${resolvedSnapshot.policy.rivalMultiplierBps / 100}%`)}
+          {renderMetricTile("Friendly", formatMultiplierValue(resolvedSnapshot.policy.friendlyMultiplierBps))}
+          {renderMetricTile("Rival", formatMultiplierValue(resolvedSnapshot.policy.rivalMultiplierBps))}
+          {renderMetricTile("Friendly IDs", resolvedSnapshot.policy.friendlyTribes.join(", ") || "none")}
+          {renderMetricTile("Rival IDs", resolvedSnapshot.policy.rivalTribes.join(", ") || "none")}
           {renderMetricTile(
             "Shared network",
             resolvedSnapshot.policy.useSharedPenalties
@@ -1280,8 +1291,8 @@ function App() {
         </div>
         <section className="workspace-card">
           <div className="workspace-card-header">
-            <p className="section-label">Accepted goods</p>
-            <p className="section-copy">Published items and point values.</p>
+            <p className="section-label">Tradable goods</p>
+            <p className="section-copy">These are the goods the box can price and accept during a trade.</p>
           </div>
           <div className="accepted-goods-list">
             {resolvedSnapshot.policy.acceptedItems.map((item) => (
@@ -1332,8 +1343,10 @@ function App() {
       <div className="workspace-stack">
         <section className="workspace-card grow">
           <div className="workspace-card-header">
-            <p className="section-label">Accepted goods</p>
-            <p className="section-copy">Enable goods and set their point value inline.</p>
+            <p className="section-label">Tradable goods</p>
+            <p className="section-copy">
+              Enable the goods this box can price and accept. What visitors can take is controlled by what you stock on the shelf.
+            </p>
           </div>
           <div className="catalog-editor">
             {TRUST_LOCKER_CATALOG.map((item) => {
@@ -1359,7 +1372,7 @@ function App() {
                     />
                     <span>
                       <strong>{item.label}</strong>
-                      <small>{formatVolume(item.volumeM3, 1)} | type_id {item.typeId}</small>
+                      <small>{formatVolume(item.volumeM3, 1)} | {item.points} pts</small>
                     </span>
                   </span>
                   <input
@@ -1401,11 +1414,13 @@ function App() {
         <section className="workspace-card">
           <div className="workspace-card-header">
             <p className="section-label">Trade terms</p>
-            <p className="section-copy">Keep the copy short and the rules explicit.</p>
+            <p className="section-copy">
+              Use comma-separated tribe IDs. Friendly IDs get the friendly multiplier; rival IDs get the rival multiplier.
+            </p>
           </div>
           <div className="field-grid">
             <label className="field-block">
-              <span>Friendly tribes</span>
+              <span>Friendly tribe IDs</span>
               <input
                 value={resolvedOwnerPolicyForm.friendlyTribesText}
                 onChange={(event) =>
@@ -1416,7 +1431,7 @@ function App() {
               />
             </label>
             <label className="field-block">
-              <span>Rival tribes</span>
+              <span>Rival tribe IDs</span>
               <input
                 value={resolvedOwnerPolicyForm.rivalTribesText}
                 onChange={(event) =>
@@ -1427,30 +1442,32 @@ function App() {
               />
             </label>
             <label className="field-block">
-              <span>Friendly multiplier (bps)</span>
+              <span>Friendly multiplier</span>
               <input
                 type="number"
                 min={0}
-                value={resolvedOwnerPolicyForm.friendlyMultiplierBps}
+                step="0.05"
+                value={Number((resolvedOwnerPolicyForm.friendlyMultiplierBps / 10000).toFixed(2))}
                 onChange={(event) =>
                   setOwnerPolicyForm((current) =>
                     current
-                      ? { ...current, friendlyMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
+                      ? { ...current, friendlyMultiplierBps: parseMultiplierInput(event.target.value) }
                       : current,
                   )
                 }
               />
             </label>
             <label className="field-block">
-              <span>Rival multiplier (bps)</span>
+              <span>Rival multiplier</span>
               <input
                 type="number"
                 min={0}
-                value={resolvedOwnerPolicyForm.rivalMultiplierBps}
+                step="0.05"
+                value={Number((resolvedOwnerPolicyForm.rivalMultiplierBps / 10000).toFixed(2))}
                 onChange={(event) =>
                   setOwnerPolicyForm((current) =>
                     current
-                      ? { ...current, rivalMultiplierBps: Math.max(0, Number(event.target.value) || 0) }
+                      ? { ...current, rivalMultiplierBps: parseMultiplierInput(event.target.value) }
                       : current,
                   )
                 }
@@ -1648,7 +1665,7 @@ function App() {
         </section>
         <div className="metrics-grid">
           {renderMetricTile("Scope", ownerDraft.useSharedPenalties ? ownerDraft.strikeScopeId : "isolated")}
-          {renderMetricTile("Penalty", `${resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps} bps`)}
+          {renderMetricTile("Penalty", `${(resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps / 100).toFixed(2)}%`)}
           {renderMetricTile("Threshold", resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold)}
           {renderMetricTile("Lockout", `${resolvedSharedNetworkPolicyForm.networkLockoutDurationMs} ms`)}
         </div>
@@ -2131,14 +2148,14 @@ function App() {
         <div className="command-main">
           <div className="command-title">
             <p className="eyebrow">{PRODUCT_WORKING_NAME}</p>
-            <h1>{displayedAssemblyName}</h1>
+            <h1>{resolvedSnapshot.owner.label}</h1>
           </div>
-          <div className="command-meta">
-            <span>{ASSEMBLY_TYPE_LABEL}</span>
-            <span>{resolvedSnapshot.owner.label}</span>
-            <span>{compactAddress(displayedAssemblyId, true)}</span>
-            {isFullMode ? <span>{runtimeLabel}</span> : null}
-          </div>
+          {isFullMode ? (
+            <div className="command-meta">
+              <span>{runtimeLabel}</span>
+              <span>{compactAddress(displayedAssemblyId, true)}</span>
+            </div>
+          ) : null}
         </div>
         <div className="command-actions">
           <div className="state-badges">
@@ -2151,13 +2168,14 @@ function App() {
             <span className="status-pill muted">{marketModeSummary}</span>
           </div>
           {renderModeToggle()}
-          <span className="mode-hint">Tab cycles views</span>
-          <button
-            className="wallet-button"
-            onClick={() => (account ? handleDisconnect() : handleConnect())}
-          >
-            {account ? abbreviateAddress(account.address) : "Connect Wallet"}
-          </button>
+          {runtimeEnvironment !== "utopia-in-game" ? (
+            <button
+              className="wallet-button"
+              onClick={() => (account ? handleDisconnect() : handleConnect())}
+            >
+              {account ? abbreviateAddress(account.address) : "Connect Wallet"}
+            </button>
+          ) : null}
         </div>
       </header>
 
