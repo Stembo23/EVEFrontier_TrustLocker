@@ -51,7 +51,16 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 - The deployed app is a single-page application, not a server-rendered site.
 - The host must rewrite all paths back to `index.html`, so `tenant`, `itemId`, and `view` remain runtime query parameters.
 - Cloudflare Pages must ship the SPA fallback from `public/_redirects`.
-- No deployment-time secrets are required for the hosted frontend path today.
+- No deployment-time secrets are required for the hosted frontend path.
+- Hosted Utopia reads and writes require explicit deployment config:
+  - `VITE_EVE_WORLD_PACKAGE_ID`
+    - optional; defaults to the Utopia world package at build time
+  - `VITE_BARTER_BOX_PACKAGE_ID`
+    - required for live hosted Barter Box reads and writes
+  - `VITE_BARTER_BOX_EXTENSION_CONFIG_ID`
+    - required for live hosted Barter Box reads and writes
+  - `VITE_SUI_RPC_URL`
+    - optional; defaults to the Sui testnet fullnode used by Utopia
 - `view` changes presentation only:
   - `view=full` keeps the judging and proof surfaces visible
   - `view=owner` shows the guided setup/control surface
@@ -77,7 +86,8 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 3. Publish a preview or staging build.
 4. Validate the hosted URL in a normal browser.
 5. Verify `view=full`, `view=owner`, and `view=visitor` on the hosted URL.
-6. Keep the owned-Utopia in-game cutover as a separate final handoff step.
+6. Set the hosted Utopia env vars before expecting live policy, inventory, or wallet-backed writes.
+7. Keep the owned-Utopia in-game cutover as a separate final handoff step.
 
 ### Script contract
 
@@ -103,6 +113,7 @@ Barter Box turns a Storage Unit into a programmable social market:
   - Fuel fees deferred until proven
 - the browser dApp presents the assembly context, trust state, policy, and trade preview in a Frontier-style flow
 - the browser dApp now resolves live localnet policy, inventory, and signal data
+- the browser dApp now has a dedicated hosted-Utopia runtime path and no longer silently falls back to localnet assumptions when `tenant=utopia`
 - owner policy mutation/freeze and visitor trade execution are implemented in-browser
 - localnet browser writes now use a gated unsafe local-only demo signer for repeatable proof
 - the browser dApp now includes a Utopia object-discovery panel that can list owned objects and also query public Utopia storage units, gates, and network nodes for sample `item_id` values

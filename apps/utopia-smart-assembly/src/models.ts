@@ -5,7 +5,7 @@ export type RuntimeEnvironment = "localnet" | "utopia-browser" | "utopia-in-game
 
 export type RelationshipBucket = "friendly" | "neutral" | "rival";
 export type LockerTrustStatus = "mutable" | "frozen";
-export type LockerDataSource = "demo" | "assembly" | "localnet";
+export type LockerDataSource = "demo" | "assembly" | "localnet" | "utopia";
 
 export type StrikeNetworkPolicy = {
   scopeId: number;
@@ -103,12 +103,12 @@ export type LockerRecentSignal = {
 };
 
 export type LockerRuntimeContext = {
-  network: "localnet";
+  network: "localnet" | "utopia";
   rpcUrl: string;
   tenant: string;
   lockerId: string;
   ownerCharacterId: string;
-  visitorCharacterId: string;
+  visitorCharacterId: string | null;
   extensionConfigId: string;
   trustLockerPackageId: string;
   worldPackageId: string;

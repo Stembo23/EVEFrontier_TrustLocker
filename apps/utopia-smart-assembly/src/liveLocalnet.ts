@@ -6,7 +6,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { deriveObjectID } from "@mysten/sui/utils";
 import type { CatalogItem, LockerPolicyDraft, MarketMode } from "../trust-locker.config";
 import deployment from "../deployments/localnet/trust-locker.json";
-import { TRUST_LOCKER_CATALOG } from "../trust-locker.config";
+import { DEFAULT_LOCKER_POLICY, TRUST_LOCKER_CATALOG } from "../trust-locker.config";
 import { createDemoSnapshot } from "./demoData";
 import type {
   LockerDataEnvelope,
@@ -87,6 +87,13 @@ function encodeMarketMode(mode: MarketMode): number {
 
 function createLocalnetClient(metadata: DeploymentMetadata): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url: metadata.rpcUrl, network: "localnet" });
+}
+
+function createRuntimeClient(runtime: LockerRuntimeContext): SuiJsonRpcClient {
+  return new SuiJsonRpcClient({
+    url: runtime.rpcUrl,
+    network: runtime.network === "utopia" ? "testnet" : "localnet",
+  });
 }
 
 function buildEd25519Keypair(secretKey: string): Ed25519Keypair {
@@ -279,17 +286,21 @@ function defaultSharedStrikeNetworkPolicy(scopeId = 0) {
   };
 }
 
-function buildBaseSnapshot(metadata: DeploymentMetadata): LockerSnapshot {
-  const policyItems = Array.from(
-    new Set([metadata.defaults.requestedTypeId, metadata.defaults.offeredTypeId]),
-  ).map((typeId) => findCatalogItem(typeId, 10));
+function buildBaseSnapshot(args: {
+  lockerId: string;
+  lockerName?: string;
+  ownerLabel?: string;
+  defaultPolicy?: LockerPolicyDraft;
+}): LockerSnapshot {
+  const defaultPolicy = args.defaultPolicy ?? DEFAULT_LOCKER_POLICY;
+  const policyItems = defaultPolicy.acceptedItems.map((item) => findCatalogItem(item.typeId, item.points));
 
   return {
-    lockerName: "Localnet Barter Box",
-    lockerId: buildRuntimeContext(metadata).lockerId,
+    lockerName: args.lockerName ?? "Barter Box",
+    lockerId: args.lockerId,
     trustStatus: "mutable",
     owner: {
-      label: `${metadata.defaults.ownerCharacterItemId} owner`,
+      label: args.ownerLabel ?? "Owner",
       canEditPolicy: true,
       canFreezePolicy: true,
       canEditSharedPenaltyPolicy: true,
@@ -307,28 +318,19 @@ function buildBaseSnapshot(metadata: DeploymentMetadata): LockerSnapshot {
         strikeCount: 0,
         lastDeficitPoints: 0,
         networkCooldownEndTimestampMs: null,
-        lastLockerId: buildRuntimeContext(metadata).lockerId,
+        lastLockerId: args.lockerId,
       },
       pricingPenaltyBps: 0,
-    lockoutActive: false,
-    lockoutEndLabel: "No network lockout",
+      lockoutActive: false,
+      lockoutEndLabel: "No network lockout",
     },
     openInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     ownerReserveInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     visitorInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     fuelFeeSupported: false,
     policy: {
+      ...defaultPolicy,
       acceptedItems: policyItems,
-      friendlyTribes: metadata.defaults.friendlyTribes,
-      rivalTribes: metadata.defaults.rivalTribes,
-      friendlyMultiplierBps: metadata.defaults.friendlyMultiplierBps,
-      rivalMultiplierBps: metadata.defaults.rivalMultiplierBps,
-      marketMode: "perpetual",
-      fuelFeeUnits: 0,
-      cooldownMs: metadata.defaults.cooldownMs,
-      strikeScopeId: 0,
-      useSharedPenalties: false,
-      isActive: metadata.defaults.isActive,
       isFrozen: false,
     },
     recentSignals: [],
@@ -511,9 +513,12 @@ async function loadRecentSignals(
   }));
 }
 
-function buildPolicyDraft(policy: PolicyField | null, metadata: DeploymentMetadata): LockerPolicyDraft {
+function buildPolicyDraft(
+  policy: PolicyField | null,
+  fallbackPolicy: LockerPolicyDraft = DEFAULT_LOCKER_POLICY,
+): LockerPolicyDraft {
   if (!policy) {
-    return buildBaseSnapshot(metadata).policy;
+    return { ...fallbackPolicy, acceptedItems: fallbackPolicy.acceptedItems.map((item) => ({ ...item })) };
   }
 
   const acceptedItems = (policy.accepted_items ?? []).map((rule) => {
@@ -523,17 +528,17 @@ function buildPolicyDraft(policy: PolicyField | null, metadata: DeploymentMetada
   });
 
   return {
-    acceptedItems: acceptedItems.length > 0 ? acceptedItems : buildBaseSnapshot(metadata).policy.acceptedItems,
+    acceptedItems: acceptedItems.length > 0 ? acceptedItems : fallbackPolicy.acceptedItems.map((item) => ({ ...item })),
     friendlyTribes: toNumberArray(policy.friendly_tribes),
     rivalTribes: toNumberArray(policy.rival_tribes),
-    friendlyMultiplierBps: toNumber(policy.friendly_multiplier_bps, metadata.defaults.friendlyMultiplierBps),
-    rivalMultiplierBps: toNumber(policy.rival_multiplier_bps, metadata.defaults.rivalMultiplierBps),
+    friendlyMultiplierBps: toNumber(policy.friendly_multiplier_bps, fallbackPolicy.friendlyMultiplierBps),
+    rivalMultiplierBps: toNumber(policy.rival_multiplier_bps, fallbackPolicy.rivalMultiplierBps),
     marketMode: parseMarketMode(policy.market_mode),
     fuelFeeUnits: toNumber(policy.fuel_fee_units, 0),
-    cooldownMs: toNumber(policy.cooldown_ms, metadata.defaults.cooldownMs),
+    cooldownMs: toNumber(policy.cooldown_ms, fallbackPolicy.cooldownMs),
     strikeScopeId: toNumber(policy.strike_scope_id, 0),
     useSharedPenalties: Boolean(policy.use_shared_penalties),
-    isActive: policy.is_active ?? metadata.defaults.isActive,
+    isActive: policy.is_active ?? fallbackPolicy.isActive,
     isFrozen: false,
   };
 }
@@ -550,24 +555,30 @@ function materializeInventory(
   }));
 }
 
-async function tryLoadLocalnetSnapshot(
-  metadata: DeploymentMetadata,
-  senderAddress?: string,
-): Promise<{ snapshot: LockerSnapshot; notes: string[]; runtime: LockerRuntimeContext }> {
+export async function resolveRuntimeSnapshot(args: {
+  runtime: LockerRuntimeContext;
+  senderAddress?: string;
+  assemblyName?: string;
+  ownerLabel?: string;
+  defaultPolicy?: LockerPolicyDraft;
+  notesPrefix?: string;
+}): Promise<{ snapshot: LockerSnapshot; notes: string[]; runtime: LockerRuntimeContext }> {
   const notes: string[] = [];
-  const client = createLocalnetClient(metadata);
-  const runtime = buildRuntimeContext(metadata);
-  const walletSender = senderAddress || DEFAULT_SENDER;
+  const client = createRuntimeClient(args.runtime);
+  const runtime = args.runtime;
+  const walletSender = args.senderAddress || DEFAULT_SENDER;
+  const baseSnapshot = buildBaseSnapshot({
+    lockerId: runtime.lockerId,
+    lockerName: args.assemblyName,
+    ownerLabel: args.ownerLabel,
+    defaultPolicy: args.defaultPolicy,
+  });
 
   const [
     policy,
     frozenBytes,
-    strikeCountBytes,
-    cooldownBytes,
-    visitorTribeBytes,
     openStorageKeyBytes,
     storageOwnerCapBytes,
-    visitorOwnerCapBytes,
     recentSignals,
   ] = await Promise.all([
     readPolicyField(client, runtime.extensionConfigId),
@@ -576,32 +587,6 @@ async function tryLoadLocalnetSnapshot(
       walletSender,
       `${runtime.worldPackageId}::storage_unit::is_extension_frozen`,
       (tx) => [tx.object(runtime.lockerId)],
-    ),
-    devInspectBytes(
-      client,
-      walletSender,
-      `${runtime.trustLockerPackageId}::trust_locker::strike_count`,
-      (tx) => [
-        tx.object(runtime.extensionConfigId),
-        tx.object(runtime.lockerId),
-        tx.object(runtime.visitorCharacterId),
-      ],
-    ),
-    devInspectBytes(
-      client,
-      walletSender,
-      `${runtime.trustLockerPackageId}::trust_locker::cooldown_end_timestamp_ms`,
-      (tx) => [
-        tx.object(runtime.extensionConfigId),
-        tx.object(runtime.lockerId),
-        tx.object(runtime.visitorCharacterId),
-      ],
-    ),
-    devInspectBytes(
-      client,
-      walletSender,
-      `${runtime.worldPackageId}::character::tribe`,
-      (tx) => [tx.object(runtime.visitorCharacterId)],
     ),
     devInspectBytes(
       client,
@@ -615,14 +600,50 @@ async function tryLoadLocalnetSnapshot(
       `${runtime.worldPackageId}::storage_unit::owner_cap_id`,
       (tx) => [tx.object(runtime.lockerId)],
     ),
-    devInspectBytes(
-      client,
-      walletSender,
-      `${runtime.worldPackageId}::character::owner_cap_id`,
-      (tx) => [tx.object(runtime.visitorCharacterId)],
-    ),
     loadRecentSignals(client, runtime.trustLockerPackageId),
   ]);
+
+  const [
+    strikeCountBytes,
+    cooldownBytes,
+    visitorTribeBytes,
+    visitorOwnerCapBytes,
+  ] = runtime.visitorCharacterId
+    ? await Promise.all([
+        devInspectBytes(
+          client,
+          walletSender,
+          `${runtime.trustLockerPackageId}::trust_locker::strike_count`,
+          (tx) => [
+            tx.object(runtime.extensionConfigId),
+            tx.object(runtime.lockerId),
+            tx.object(runtime.visitorCharacterId!),
+          ],
+        ),
+        devInspectBytes(
+          client,
+          walletSender,
+          `${runtime.trustLockerPackageId}::trust_locker::cooldown_end_timestamp_ms`,
+          (tx) => [
+            tx.object(runtime.extensionConfigId),
+            tx.object(runtime.lockerId),
+            tx.object(runtime.visitorCharacterId!),
+          ],
+        ),
+        devInspectBytes(
+          client,
+          walletSender,
+          `${runtime.worldPackageId}::character::tribe`,
+          (tx) => [tx.object(runtime.visitorCharacterId!)],
+        ),
+        devInspectBytes(
+          client,
+          walletSender,
+          `${runtime.worldPackageId}::character::owner_cap_id`,
+          (tx) => [tx.object(runtime.visitorCharacterId!)],
+        ),
+      ])
+    : [null, null, null, null];
 
   const openStorageKey = openStorageKeyBytes ? bcs.Address.parse(openStorageKeyBytes) : null;
   const storageOwnerCapId = storageOwnerCapBytes ? bcs.Address.parse(storageOwnerCapBytes) : null;
@@ -634,9 +655,9 @@ async function tryLoadLocalnetSnapshot(
     visitorOwnerCapId ? loadInventoryEntries(client, runtime.lockerId, visitorOwnerCapId) : Promise.resolve([]),
   ]);
 
-  const policyDraft = buildPolicyDraft(policy, metadata);
+  const policyDraft = buildPolicyDraft(policy, args.defaultPolicy ?? DEFAULT_LOCKER_POLICY);
   const [sharedStrikeCountBytes, sharedCooldownBytes, sharedPricingPenaltyBpsBytes, sharedPolicy] =
-    policyDraft.strikeScopeId > 0
+    policyDraft.strikeScopeId > 0 && runtime.visitorCharacterId
       ? await Promise.all([
           devInspectBytes(
             client,
@@ -645,7 +666,7 @@ async function tryLoadLocalnetSnapshot(
             (tx) => [
               tx.object(runtime.extensionConfigId),
               tx.pure.u64(BigInt(policyDraft.strikeScopeId)),
-              tx.object(runtime.visitorCharacterId),
+              tx.object(runtime.visitorCharacterId!),
             ],
           ),
           devInspectBytes(
@@ -655,7 +676,7 @@ async function tryLoadLocalnetSnapshot(
             (tx) => [
               tx.object(runtime.extensionConfigId),
               tx.pure.u64(BigInt(policyDraft.strikeScopeId)),
-              tx.object(runtime.visitorCharacterId),
+              tx.object(runtime.visitorCharacterId!),
             ],
           ),
           devInspectBytes(
@@ -665,7 +686,7 @@ async function tryLoadLocalnetSnapshot(
             (tx) => [
               tx.object(runtime.extensionConfigId),
               tx.pure.u64(BigInt(policyDraft.strikeScopeId)),
-              tx.object(runtime.visitorCharacterId),
+              tx.object(runtime.visitorCharacterId!),
             ],
           ),
           readSharedStrikeNetworkPolicy(
@@ -696,12 +717,12 @@ async function tryLoadLocalnetSnapshot(
   const sharedPricingPenaltyBps = Number(parseU64(sharedPricingPenaltyBpsBytes) ?? 0n);
 
   const snapshot: LockerSnapshot = {
-    lockerName: "Localnet Barter Box",
+    lockerName: args.assemblyName ?? baseSnapshot.lockerName,
     lockerId: runtime.lockerId,
     trustStatus: isFrozen ? "frozen" : "mutable",
     fuelFeeSupported: false,
     owner: {
-      label: `${metadata.defaults.ownerCharacterItemId} owner`,
+      label: args.ownerLabel ?? baseSnapshot.owner.label,
       canEditPolicy: !isFrozen,
       canFreezePolicy: !isFrozen,
       canEditSharedPenaltyPolicy: !isFrozen,
@@ -761,13 +782,17 @@ async function tryLoadLocalnetSnapshot(
     recentSignals,
   };
 
-  notes.push("Localnet deployment metadata loaded from the published Barter Box JSON.");
-  notes.push("Live chain reads verified for policy, trust state, visitor penalty state, and inventory balances.");
-  notes.push("Browser write actions target the same owner-cap and trade entrypoints as the local scripts.");
+  if (args.notesPrefix) {
+    notes.push(args.notesPrefix);
+  }
+  notes.push("Live chain reads resolved policy, trust state, visitor penalty state, and inventory balances.");
+  notes.push("Browser write actions target the same owner-cap and trade entrypoints as the Barter Box scripts.");
   if (snapshot.openInventory.length === 0) {
     notes.push("Open inventory is currently empty or unavailable from the live locker state.");
   }
-  if (snapshot.visitorInventory.length === 0) {
+  if (!runtime.visitorCharacterId) {
+    notes.push("The connected wallet does not currently resolve to a live character, so visitor cargo and trade execution stay read-only.");
+  } else if (snapshot.visitorInventory.length === 0) {
     notes.push("Visitor owned inventory is currently empty or unavailable from the live locker state.");
   }
   if (snapshot.policy.fuelFeeUnits > 0 && !snapshot.fuelFeeSupported) {
@@ -790,7 +815,24 @@ export async function resolveLocalnetLockerSnapshot(
   let runtime: LockerRuntimeContext | undefined;
 
   try {
-    const live = await tryLoadLocalnetSnapshot(deployment, senderAddress);
+    const runtimeContext = buildRuntimeContext(deployment);
+    const live = await resolveRuntimeSnapshot({
+      runtime: runtimeContext,
+      senderAddress,
+      assemblyName,
+      ownerLabel: `${deployment.defaults.ownerCharacterItemId} owner`,
+      defaultPolicy: {
+        ...DEFAULT_LOCKER_POLICY,
+        acceptedItems: DEFAULT_LOCKER_POLICY.acceptedItems.map((item) => ({ ...item })),
+        friendlyTribes: deployment.defaults.friendlyTribes,
+        rivalTribes: deployment.defaults.rivalTribes,
+        friendlyMultiplierBps: deployment.defaults.friendlyMultiplierBps,
+        rivalMultiplierBps: deployment.defaults.rivalMultiplierBps,
+        cooldownMs: deployment.defaults.cooldownMs,
+        isActive: deployment.defaults.isActive,
+      },
+      notesPrefix: "Localnet deployment metadata loaded from the published Barter Box JSON.",
+    });
     snapshot = live.snapshot;
     notes.push(...live.notes);
     runtime = live.runtime;
@@ -873,6 +915,9 @@ async function resolveStorageUnitOwnerCapRef(
   runtime: LockerRuntimeContext,
   senderAddress: string,
 ) {
+  if (!runtime.ownerCharacterId) {
+    throw new Error("The owner character could not be resolved for this Barter Box runtime.");
+  }
   const bytes = await devInspectBytes(
     client,
     senderAddress,
@@ -890,11 +935,15 @@ async function resolveVisitorOwnerCapRef(
   runtime: LockerRuntimeContext,
   senderAddress: string,
 ) {
+  if (!runtime.visitorCharacterId) {
+    throw new Error("The connected wallet does not currently resolve to a visitor character.");
+  }
+  const visitorCharacterId = runtime.visitorCharacterId;
   const bytes = await devInspectBytes(
     client,
     senderAddress,
     `${runtime.worldPackageId}::character::owner_cap_id`,
-    (tx) => [tx.object(runtime.visitorCharacterId)],
+    (tx) => [tx.object(visitorCharacterId)],
   );
   if (!bytes) {
     throw new Error("Could not resolve visitor Character owner cap.");
@@ -925,15 +974,16 @@ export async function updateLockerPolicy(args: {
   draft: LockerPolicyDraft;
   signAndExecuteTransaction: WalletTxExecutor;
 }): Promise<string> {
-  const client = createLocalnetClient(deployment);
+  const client = createRuntimeClient(args.runtime);
   const ownerCapRef = await resolveStorageUnitOwnerCapRef(client, args.runtime, args.senderAddress);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
   const vectors = buildPolicyVectors(args.draft);
 
   const tx = new Transaction();
   const [storageOwnerCap, receipt] = tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), tx.receivingRef(ownerCapRef)],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(ownerCapRef)],
   });
 
   tx.moveCall({
@@ -960,7 +1010,7 @@ export async function updateLockerPolicy(args: {
   tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), storageOwnerCap, receipt],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, receipt],
   });
 
   const result = await args.signAndExecuteTransaction({
@@ -981,14 +1031,15 @@ export async function updateStrikeNetworkPolicy(args: {
   isActive: boolean;
   signAndExecuteTransaction: WalletTxExecutor;
 }): Promise<string> {
-  const client = createLocalnetClient(deployment);
+  const client = createRuntimeClient(args.runtime);
   const ownerCapRef = await resolveStorageUnitOwnerCapRef(client, args.runtime, args.senderAddress);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
 
   const tx = new Transaction();
   const [storageOwnerCap, receipt] = tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), tx.receivingRef(ownerCapRef)],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(ownerCapRef)],
   });
 
   tx.moveCall({
@@ -1009,7 +1060,7 @@ export async function updateStrikeNetworkPolicy(args: {
   tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), storageOwnerCap, receipt],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, receipt],
   });
 
   const result = await args.signAndExecuteTransaction({
@@ -1024,14 +1075,15 @@ export async function freezeLockerPolicy(args: {
   senderAddress: string;
   signAndExecuteTransaction: WalletTxExecutor;
 }): Promise<string> {
-  const client = createLocalnetClient(deployment);
+  const client = createRuntimeClient(args.runtime);
   const ownerCapRef = await resolveStorageUnitOwnerCapRef(client, args.runtime, args.senderAddress);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
 
   const tx = new Transaction();
   const [storageOwnerCap, receipt] = tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), tx.receivingRef(ownerCapRef)],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(ownerCapRef)],
   });
 
   tx.moveCall({
@@ -1042,7 +1094,7 @@ export async function freezeLockerPolicy(args: {
   tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
-    arguments: [tx.object(args.runtime.ownerCharacterId), storageOwnerCap, receipt],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, receipt],
   });
 
   const result = await args.signAndExecuteTransaction({
@@ -1061,21 +1113,25 @@ export async function executeTrade(args: {
   offeredQuantity: number;
   signAndExecuteTransaction: WalletTxExecutor;
 }): Promise<string> {
-  const client = createLocalnetClient(deployment);
+  const client = createRuntimeClient(args.runtime);
   const visitorOwnerCapRef = await resolveVisitorOwnerCapRef(client, args.runtime, args.senderAddress);
+  const visitorCharacterId = args.runtime.visitorCharacterId;
+  if (!visitorCharacterId) {
+    throw new Error("The connected wallet does not currently resolve to a visitor character.");
+  }
 
   const tx = new Transaction();
   const [visitorOwnerCap, receipt] = tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::character::Character`],
-    arguments: [tx.object(args.runtime.visitorCharacterId), tx.receivingRef(visitorOwnerCapRef)],
+    arguments: [tx.object(visitorCharacterId), tx.receivingRef(visitorOwnerCapRef)],
   });
 
   tx.moveCall({
     target: `${args.runtime.trustLockerPackageId}::trust_locker::trade`,
     arguments: [
       tx.object(args.runtime.lockerId),
-      tx.object(args.runtime.visitorCharacterId),
+      tx.object(visitorCharacterId),
       visitorOwnerCap,
       tx.object(args.runtime.extensionConfigId),
       tx.object("0x6"),
@@ -1089,7 +1145,7 @@ export async function executeTrade(args: {
   tx.moveCall({
     target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
     typeArguments: [`${args.runtime.worldPackageId}::character::Character`],
-    arguments: [tx.object(args.runtime.visitorCharacterId), visitorOwnerCap, receipt],
+    arguments: [tx.object(visitorCharacterId), visitorOwnerCap, receipt],
   });
 
   const result = await args.signAndExecuteTransaction({

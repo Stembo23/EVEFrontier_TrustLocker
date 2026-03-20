@@ -29,6 +29,11 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 2. Run `cd apps/utopia-smart-assembly && pnpm build`.
 3. Publish `apps/utopia-smart-assembly/dist`.
 4. Keep `apps/utopia-smart-assembly/public/_redirects` in place for SPA fallback.
+5. Set these Pages environment variables for live hosted Utopia reads and writes:
+   - `VITE_BARTER_BOX_PACKAGE_ID`
+   - `VITE_BARTER_BOX_EXTENSION_CONFIG_ID`
+   - optional: `VITE_EVE_WORLD_PACKAGE_ID`
+   - optional: `VITE_SUI_RPC_URL`
 
 ## Runtime Assumptions
 
@@ -36,7 +41,8 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - `view` is presentation-only and may be toggled without losing the world context.
 - The hosted app is the same codebase used in standalone browser and in-game browser contexts.
 - The local demo signer is localnet-only and must not be exposed as a hosted Utopia assumption.
-- No deployment-time secrets are required for the hosted frontend path today.
+- No deployment-time secrets are required for the hosted frontend path.
+- Live hosted Utopia policy/inventory reads and wallet-backed writes require the Barter Box package/config env vars above.
 - `view=owner` remains the guided setup/control surface, and future owner-incentive controls should live there rather than in `view=visitor`.
 - `view=visitor` remains the player-facing trade surface.
 - Fuel fees are currently deferred because the feasibility spike did not prove a character-side Fuel debit/credit path.
@@ -67,6 +73,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - policy
   - trade preview
   - owner/visitor role detection
+- Confirm the hosted app is using the explicit Utopia runtime path rather than localnet/demo fallback.
 - Keep the owner-incentive narrative explicit:
   - public docs should state whether the active market mode is `perpetual_market` or `procurement_market`
   - public docs should state that Fuel fees are deferred until the payment path is proven
@@ -108,6 +115,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm the external browser path opens a real Utopia object with `?tenant=utopia&itemId=...&view=full`.
 - [ ] Confirm EVE Vault connects cleanly for Utopia validation.
 - [ ] Confirm the app resolves the assembly context from a real `itemId`.
+- [ ] Confirm the Cloudflare Pages env vars for the Barter Box package/config are set.
 - [ ] Confirm the UI does not expose localnet-only demo signer controls in owner or visitor mode.
 
 ### Utopia Cutover

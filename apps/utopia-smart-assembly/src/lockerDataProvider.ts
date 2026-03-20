@@ -1,5 +1,6 @@
+import { getWalletCharacters, parseCharacterFromJson } from "@evefrontier/dapp-kit";
 import { createDemoSnapshot } from "./demoData";
-import { resolveLocalnetLockerSnapshot } from "./liveLocalnet";
+import { resolveLocalnetLockerSnapshot, resolveRuntimeSnapshot } from "./liveLocalnet";
 import type {
   LockerDataEnvelope,
   LockerDataSource,
@@ -8,10 +9,16 @@ import type {
   UiCapabilities,
   UiMode,
 } from "./models";
+import { buildHostedUtopiaRuntime, isLocalRuntimeHost, readHostedUtopiaConfig } from "./runtimeConfig";
 
 type ProviderInput = {
   assemblyId?: string;
   assemblyName?: string;
+  assemblyOwner?: {
+    id?: string | null;
+    name?: string | null;
+    address?: string | null;
+  } | null;
   smartObjectError?: string | null;
   walletAddress?: string | null;
   tenant?: string | null;
@@ -22,27 +29,25 @@ function applyAssemblyContext(
   snapshot: LockerSnapshot,
   assemblyId?: string,
   assemblyName?: string,
+  ownerLabel?: string,
 ): LockerSnapshot {
-  if (!assemblyId && !assemblyName) return snapshot;
   return {
     ...snapshot,
     lockerId: assemblyId || snapshot.lockerId,
     lockerName: assemblyName || snapshot.lockerName,
+    owner: ownerLabel
+      ? {
+          ...snapshot.owner,
+          label: ownerLabel,
+        }
+      : snapshot.owner,
   };
-}
-
-function makeEnvelope(
-  snapshot: LockerSnapshot,
-  source: LockerDataSource,
-  notes: string[],
-): LockerDataEnvelope {
-  return { snapshot, source, notes };
 }
 
 function resolveRuntimeEnvironment(args: {
   tenant?: string | null;
   viewMode: UiMode;
-  runtimeNetwork?: "localnet";
+  runtimeNetwork?: "localnet" | "utopia";
 }): RuntimeEnvironment {
   if (args.runtimeNetwork === "localnet") return "localnet";
   if (args.tenant === "utopia") {
@@ -71,6 +76,17 @@ function resolveUiCapabilities(runtimeEnvironment: RuntimeEnvironment, viewMode:
   };
 }
 
+async function resolveWalletCharacterId(walletAddress?: string | null): Promise<string | null> {
+  if (!walletAddress) return null;
+  const response = await getWalletCharacters(walletAddress);
+  const node = response.data?.address?.objects?.nodes?.[0] as
+    | { asMoveObject?: { contents?: { json?: Record<string, unknown> } | null } | null }
+    | undefined;
+  const json = node?.asMoveObject?.contents?.json;
+  const character = parseCharacterFromJson(json);
+  return character?.id || null;
+}
+
 export async function resolveLockerData(input: ProviderInput): Promise<LockerDataEnvelope> {
   let snapshot = createDemoSnapshot();
   const notes: string[] = [];
@@ -80,21 +96,34 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
     tenant: input.tenant,
     viewMode: input.viewMode,
   });
+  const ownerLabel =
+    input.assemblyOwner?.name?.trim() ||
+    input.assemblyOwner?.address?.trim() ||
+    snapshot.owner.label;
 
-  if (input.assemblyId || input.assemblyName) {
-    snapshot = applyAssemblyContext(snapshot, input.assemblyId, input.assemblyName);
+  if (input.assemblyId || input.assemblyName || ownerLabel) {
+    snapshot = applyAssemblyContext(snapshot, input.assemblyId, input.assemblyName, ownerLabel);
     source = "assembly";
-    notes.push("Smart object context detected; locker identity mapped from selected assembly.");
+    notes.push("Assembly context detected.");
   }
 
-  if (!input.smartObjectError) {
+  if (input.smartObjectError) {
+    notes.push(`Smart object read warning: ${input.smartObjectError}`);
+  }
+
+  if (isLocalRuntimeHost() && !input.smartObjectError) {
     try {
       const localnet = await resolveLocalnetLockerSnapshot(
         input.assemblyId,
         input.assemblyName,
         input.walletAddress ?? undefined,
       );
-      snapshot = localnet.snapshot;
+      snapshot = applyAssemblyContext(
+        localnet.snapshot,
+        input.assemblyId,
+        input.assemblyName,
+        ownerLabel,
+      );
       source = localnet.source;
       notes.push(...localnet.notes);
       runtime = localnet.runtime;
@@ -105,17 +134,61 @@ export async function resolveLockerData(input: ProviderInput): Promise<LockerDat
       });
     } catch (error) {
       notes.push(
-        `Localnet read integration not available; demo fallback remains active. ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Localnet read integration is unavailable. ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  } else {
-    notes.push("Smart object read warning kept the app on the curated demo snapshot.");
-  }
+  } else if (input.tenant === "utopia" && input.assemblyId && !input.smartObjectError) {
+    const hostedConfig = readHostedUtopiaConfig();
 
-  if (input.smartObjectError) {
-    notes.push(`Smart object read warning: ${input.smartObjectError}`);
+    if (hostedConfig.missing.length > 0) {
+      notes.push(
+        `Hosted Utopia config is incomplete. Set ${hostedConfig.missing.join(", ")} in Cloudflare Pages before enabling live Barter Box reads and writes.`,
+      );
+    } else {
+      try {
+        const visitorCharacterId = await resolveWalletCharacterId(input.walletAddress);
+        const utopiaRuntime = buildHostedUtopiaRuntime({
+          assemblyId: input.assemblyId,
+          ownerCharacterId: input.assemblyOwner?.id,
+          visitorCharacterId,
+          tenant: input.tenant,
+          defaultViewMode: "visitor",
+        });
+
+        const utopia = await resolveRuntimeSnapshot({
+          runtime: utopiaRuntime,
+          senderAddress: input.walletAddress ?? undefined,
+          assemblyName: input.assemblyName,
+          ownerLabel,
+          notesPrefix: "Hosted Utopia runtime resolved from explicit Cloudflare config and the selected smart object.",
+        });
+
+        snapshot = applyAssemblyContext(
+          utopia.snapshot,
+          input.assemblyId,
+          input.assemblyName,
+          ownerLabel,
+        );
+        source = "utopia";
+        notes.push(...utopia.notes);
+        runtime = utopia.runtime;
+        runtimeEnvironment = resolveRuntimeEnvironment({
+          tenant: input.tenant,
+          viewMode: input.viewMode,
+          runtimeNetwork: utopia.runtime.network,
+        });
+      } catch (error) {
+        notes.push(
+          `Hosted Utopia runtime could not resolve live Barter Box state. ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+  } else if (input.tenant === "utopia" && !input.smartObjectError) {
+    notes.push("Hosted Utopia routing needs a real assembly itemId before live Barter Box state can be resolved.");
+  } else if (!input.smartObjectError) {
+    notes.push("No live runtime was selected, so the curated Barter Box snapshot remains active.");
   }
 
   return {

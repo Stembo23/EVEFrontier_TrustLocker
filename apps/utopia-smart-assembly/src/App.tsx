@@ -7,11 +7,7 @@ import {
   useConnection,
   useSmartObject,
 } from "@evefrontier/dapp-kit";
-import {
-  useCurrentAccount,
-  useCurrentClient,
-  useDAppKit,
-} from "@mysten/dapp-kit-react";
+import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import {
   PRODUCT_WORKING_NAME,
   TRUST_LOCKER_CATALOG,
@@ -38,7 +34,6 @@ import { quoteTradePreview } from "./trustMath";
 const LOCAL_DEMO_SIGNER_STORAGE_KEY = "trust-locker.local-demo-signer.v1";
 const VIEW_MODE_STORAGE_KEY = "trust-locker.view-mode.v1";
 const DEFAULT_TENANT = "utopia";
-const ASSEMBLY_TYPE_LABEL = "Smart Storage Unit";
 const VIEW_SEQUENCE: UiMode[] = ["visitor", "owner", "full"];
 
 type LocalDemoSignerDraft = {
@@ -112,14 +107,14 @@ type WorkspaceTabDefinition<T extends string> = {
 
 const VISITOR_WORKSPACE_TABS: WorkspaceTabDefinition<VisitorWorkspaceTab>[] = [
   { id: "trade", label: "Trade" },
-  { id: "terms", label: "Terms" },
+  { id: "terms", label: "Rules" },
   { id: "status", label: "Status" },
 ];
 
 const OWNER_WORKSPACE_TABS: WorkspaceTabDefinition<OwnerWorkspaceTab>[] = [
   { id: "goods", label: "Goods" },
-  { id: "terms", label: "Terms" },
-  { id: "network", label: "Network" },
+  { id: "terms", label: "Market settings" },
+  { id: "network", label: "Trust network" },
   { id: "publish", label: "Publish" },
 ];
 
@@ -434,9 +429,8 @@ function StepHeader(props: { step?: string; title: string; description: string }
 function App() {
   const { handleConnect, handleDisconnect } = useConnection();
   const account = useCurrentAccount();
-  const currentClient = useCurrentClient();
   const dAppKit = useDAppKit();
-  const { assembly, loading, error } = useSmartObject();
+  const { assembly, assemblyOwner, loading, error } = useSmartObject();
 
   const [lockerData, setLockerData] = useState<LockerDataEnvelope | null>(null);
   const [viewMode, setViewMode] = useState<UiMode>(readInitialViewMode);
@@ -484,6 +478,13 @@ function App() {
       const envelope = await resolveLockerData({
         assemblyId: assembly?.id,
         assemblyName: assembly?.name,
+        assemblyOwner: assemblyOwner
+          ? {
+              id: assemblyOwner.id,
+              name: assemblyOwner.name,
+              address: assemblyOwner.address,
+            }
+          : null,
         smartObjectError: error ? String(error) : null,
         walletAddress: preferredReaderAddress,
         tenant,
@@ -498,7 +499,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [assembly?.id, assembly?.name, error, preferredReaderAddress, refreshTick, tenant, viewMode]);
+  }, [assembly?.id, assembly?.name, assemblyOwner?.address, assemblyOwner?.id, assemblyOwner?.name, error, preferredReaderAddress, refreshTick, tenant, viewMode]);
 
   const snapshot = lockerData?.snapshot;
   const runtime = lockerData?.runtime;
@@ -515,9 +516,6 @@ function App() {
     showOwnerWorkspace: false,
     showGuidedFullFlow: false,
   };
-  const currentNetwork = String(
-    ((currentClient as { network?: string } | null)?.network ?? "unknown"),
-  );
   const isVisitorMode = viewMode === "visitor";
   const isOwnerMode = viewMode === "owner";
   const isFullMode = viewMode === "full";
@@ -781,13 +779,13 @@ function App() {
 
   async function handlePolicySave() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !ownerPolicyForm || !actor) {
+    if (!runtime || !runtime.ownerCharacterId || !ownerPolicyForm || !actor) {
       setActionState({
         status: "error",
         label: "Save policy",
         message: showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load locker runtime context before saving policy.",
+          : "Connect the owner wallet and load the live Barter Box runtime before saving policy.",
       });
       return;
     }
@@ -818,13 +816,13 @@ function App() {
 
   async function handleFreeze() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !actor) {
+    if (!runtime || !runtime.ownerCharacterId || !actor) {
       setActionState({
         status: "error",
         label: "Freeze locker",
         message: showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load locker runtime context before freezing.",
+          : "Connect the owner wallet and load the live Barter Box runtime before freezing.",
       });
       return;
     }
@@ -849,13 +847,13 @@ function App() {
 
   async function handleSharedNetworkPolicySave() {
     const actor = resolveActorExecution("owner");
-    if (!runtime || !sharedNetworkPolicyForm || !actor) {
+    if (!runtime || !runtime.ownerCharacterId || !sharedNetworkPolicyForm || !actor) {
       setActionState({
         status: "error",
         label: "Save strike network",
         message: showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
-          : "Connect the owner wallet and load locker runtime context before saving strike network policy.",
+          : "Connect the owner wallet and load the live Barter Box runtime before saving trust-network settings.",
       });
       return;
     }
@@ -902,13 +900,13 @@ function App() {
       return;
     }
 
-    if (!runtime || !actor || !requestedItem || !offeredItem) {
+    if (!runtime || !runtime.visitorCharacterId || !actor || !requestedItem || !offeredItem) {
       setActionState({
         status: "error",
         label: "Execute trade",
         message: showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local visitor demo signer, or connect a visitor-capable wallet."
-          : "Connect the visitor wallet and load live locker data before trading.",
+          : "Connect a wallet with a live character and load the live Barter Box runtime before trading.",
       });
       return;
     }
@@ -1003,6 +1001,12 @@ function App() {
         ? `Trade fee: ${resolvedSnapshot.policy.fuelFeeUnits} Fuel`
         : `Fuel fee configured: ${resolvedSnapshot.policy.fuelFeeUnits} Fuel (deferred)`
       : "No Fuel fee";
+  const runtimeUnavailableReason =
+    runtimeEnvironment === "localnet"
+      ? "Localnet runtime context is not loaded yet."
+      : lockerData?.notes.find(
+          (note) => note.includes("Hosted Utopia") || note.includes("connected wallet") || note.includes("config is incomplete"),
+        ) ?? "Live Utopia Barter Box state is not available yet.";
   const tradeBlockedReason = displayedCooldownActive
     ? `Trading locked while cooldown is active. ${displayedCooldownEndLabel}.`
     : displayedSharedLockoutActive
@@ -1012,11 +1016,15 @@ function App() {
       : resolvedPreview.fuelFeeBlockedReason
         ? resolvedPreview.fuelFeeBlockedReason
       : !runtime
-        ? "Local runtime context is not loaded yet."
+        ? runtimeUnavailableReason
         : resolvedSnapshot.openInventory.length === 0
           ? "The locker has no open inventory available for trade."
-          : !visitorActor
-            ? "Configure the local visitor demo signer or connect a visitor-capable wallet."
+          : !runtime.visitorCharacterId
+            ? "Connect a wallet with a live character to load your cargo and trade against this box."
+            : !visitorActor
+              ? showLocalDemoSignerPanel
+                ? "Configure the local visitor demo signer or connect a visitor-capable wallet."
+                : "Connect a visitor-capable wallet before trading."
             : null;
   const tradeButtonLabel = displayedCooldownActive
     ? "Cooldown active"
@@ -1031,13 +1039,13 @@ function App() {
       label: "Visitor",
       eyebrow: "Visitor view",
       title: displayedAssemblyName,
-      description: "Inspect the shelf, compare your hold, then trade against the published terms.",
+      description: "Inspect what the box offers, compare it against your cargo, then trade against the published rules.",
     },
     owner: {
       label: "Owner",
       eyebrow: "Owner view",
       title: displayedAssemblyName,
-      description: "Set accepted goods, pricing, trust rules, and publish the box without using the debug surface.",
+      description: "Set what the box accepts in exchange, review the shelf, tune the market rules, and publish without using the debug surface.",
     },
     full: {
       label: "Full",
@@ -1209,7 +1217,7 @@ function App() {
           <section className="workspace-card">
             <div className="workspace-card-header">
               <p className="section-label">Request</p>
-              <p className="section-copy">Click a shelf item on the left to change this selection.</p>
+              <p className="section-copy">Selected from what the box currently offers.</p>
             </div>
             <div className="selection-summary">
               <strong>{resolvedPreview.requestedItem.label}</strong>
@@ -1234,7 +1242,7 @@ function App() {
           <section className="workspace-card">
             <div className="workspace-card-header">
               <p className="section-label">Offer</p>
-              <p className="section-copy">Click a hold item on the left to load it into the composer.</p>
+              <p className="section-copy">Selected from your current cargo.</p>
             </div>
             <div className="selection-summary">
               <strong>{resolvedPreview.offeredItem.label}</strong>
@@ -1320,7 +1328,7 @@ function App() {
             : renderMetricTile("Your multiplier", formatMultiplierValue(resolvedPreview.pricingMultiplierBps))}
           {advanced
             ? renderMetricTile("Friendly IDs", resolvedSnapshot.policy.friendlyTribes.join(", ") || "none")
-            : renderMetricTile("Tradable goods", resolvedSnapshot.policy.acceptedItems.length)}
+            : renderMetricTile("Accepted in exchange", resolvedSnapshot.policy.acceptedItems.length)}
           {advanced
             ? renderMetricTile("Rival IDs", resolvedSnapshot.policy.rivalTribes.join(", ") || "none")
             : renderMetricTile("Fuel fee", resolvedSnapshot.policy.fuelFeeUnits || "off")}
@@ -1334,7 +1342,7 @@ function App() {
         </div>
         <section className="workspace-card">
           <div className="workspace-card-header">
-            <p className="section-label">{advanced ? "Tradable goods" : "Goods accepted in exchange"}</p>
+            <p className="section-label">{advanced ? "Accepted goods" : "Accepted in exchange"}</p>
             <p className="section-copy">
               {advanced
                 ? "These are the goods the box can price and accept during a trade."
@@ -1392,11 +1400,32 @@ function App() {
   function renderOwnerGoodsWorkspace() {
     return (
       <div className="workspace-stack">
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Offered on shelf</p>
+            <p className="section-copy">
+              Visitors can only take what is currently stocked on the shelf. Use normal storage-unit inventory flow to restock this box.
+            </p>
+          </div>
+          <div className="accepted-goods-list">
+            {resolvedSnapshot.openInventory.length === 0 ? (
+              <p className="empty-state">No shelf stock is available yet.</p>
+            ) : (
+              resolvedSnapshot.openInventory.map((item) => (
+                <div key={item.typeId} className="accepted-goods-row">
+                  <strong>{item.label}</strong>
+                  <span>qty {item.quantity}</span>
+                  <span>{formatVolume(item.volumeM3, item.quantity)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
         <section className="workspace-card grow">
           <div className="workspace-card-header">
-            <p className="section-label">Tradable goods</p>
+            <p className="section-label">Accepted in exchange</p>
             <p className="section-copy">
-              Visitors can take what you stock on the shelf. Enable the goods below to decide what this box will accept in exchange.
+              Enable the goods this box will accept as payment and assign the point value for each one.
             </p>
           </div>
           <div className="catalog-editor">
@@ -1452,7 +1481,7 @@ function App() {
         </section>
         <div className="metrics-grid">
           {renderMetricTile("Shelf lines", resolvedSnapshot.openInventory.length)}
-          {renderMetricTile("Reserve lines", resolvedSnapshot.ownerReserveInventory.length)}
+          {renderMetricTile("Owner reserve", resolvedSnapshot.ownerReserveInventory.length)}
           {renderMetricTile("Risk posture", buildRiskLabel(ownerDraft), "accent")}
         </div>
       </div>
@@ -1465,11 +1494,11 @@ function App() {
       <div className="workspace-stack">
         <section className="workspace-card">
           <div className="workspace-card-header">
-            <p className="section-label">Trade terms</p>
+            <p className="section-label">Market settings</p>
             <p className="section-copy">
               {advanced
                 ? "Advanced relationship pricing and internal identifiers stay in Full view."
-                : "Set the market behavior and visitor cooldown. Advanced pricing internals stay in Full view."}
+                : "Set the market behavior and visitor cooldown. Advanced identifiers and internal pricing controls stay in Full view."}
             </p>
           </div>
           <div className="field-grid">
@@ -1616,7 +1645,7 @@ function App() {
           <div className="metrics-grid">
             {renderMetricTile("Mode", marketModeSummary, "accent")}
             {renderMetricTile("Cooldown", `${resolvedOwnerPolicyForm.cooldownMs / 1000}s`)}
-            {renderMetricTile("Policy", resolvedOwnerPolicyForm.isActive ? "active" : "inactive")}
+            {renderMetricTile("Policy", resolvedOwnerPolicyForm.isActive ? "online" : "offline")}
           </div>
         )}
       </div>
@@ -1629,11 +1658,11 @@ function App() {
       <div className="workspace-stack">
         <section className="workspace-card">
           <div className="workspace-card-header">
-            <p className="section-label">Strike network</p>
+            <p className="section-label">Trust network</p>
             <p className="section-copy">
               {advanced
                 ? "Shared penalties remain optional and owner-defined."
-                : "Shared penalties are optional. Raw network configuration stays in Full view."}
+                : "Shared penalties are optional. Raw trust-network tuning stays in Full view."}
             </p>
           </div>
           <div className="field-grid">
@@ -1752,7 +1781,7 @@ function App() {
           {renderMetricTile("Scope", ownerDraft.useSharedPenalties ? ownerDraft.strikeScopeId : "isolated")}
           {renderMetricTile("Penalty", `${(resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps / 100).toFixed(2)}%`)}
           {renderMetricTile("Threshold", resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold)}
-          {renderMetricTile("Lockout", `${resolvedSharedNetworkPolicyForm.networkLockoutDurationMs} ms`)}
+          {renderMetricTile("Lockout", `${Math.round(resolvedSharedNetworkPolicyForm.networkLockoutDurationMs / 1000)}s`)}
         </div>
       </div>
     );
@@ -1790,7 +1819,6 @@ function App() {
           </div>
           <div className="metrics-grid">
             {renderMetricTile("Assembly", displayedAssemblyName, "accent")}
-            {renderMetricTile("Type", ASSEMBLY_TYPE_LABEL)}
             {renderMetricTile("Owner", resolvedSnapshot.owner.label)}
             {renderMetricTile("Runtime", runtimeLabel)}
             {renderMetricTile("State", operatorStateLabel)}
@@ -1982,8 +2010,8 @@ function App() {
       return (
         <aside className="shell-panel left-rail visitor-rail">
           {renderRailSection({
-            title: "Shelf",
-            subtitle: "Click to set the requested item.",
+            title: "Available from box",
+            subtitle: "Current shelf stock available to take.",
             items: resolvedSnapshot.openInventory,
             quantityLabel: "shelf",
             selectedTypeId: requestedTypeId,
@@ -1991,8 +2019,8 @@ function App() {
             onSelect: (typeId) => startTransition(() => setRequestedTypeId(typeId)),
           })}
           {renderRailSection({
-            title: "Hold",
-            subtitle: "Click to set the offered item.",
+            title: "Your cargo",
+            subtitle: "Goods you can offer in exchange.",
             items: resolvedSnapshot.visitorInventory,
             quantityLabel: "hold",
             selectedTypeId: offeredTypeId,
@@ -2007,14 +2035,14 @@ function App() {
       return (
         <aside className="shell-panel left-rail owner-rail">
           {renderRailSection({
-            title: "Shelf",
-            subtitle: "Current public stock.",
+            title: "Offered on shelf",
+            subtitle: "Current public stock visitors can take.",
             items: resolvedSnapshot.openInventory,
             quantityLabel: "shelf",
           })}
           {renderRailSection({
-            title: "Reserve",
-            subtitle: "Procurement receipts inside this unit.",
+            title: "Owner reserve",
+            subtitle: "Procurement receipts stored inside this unit.",
             items: resolvedSnapshot.ownerReserveInventory,
             quantityLabel: "reserve",
           })}
@@ -2024,7 +2052,7 @@ function App() {
 
     const railTabs: WorkspaceTabDefinition<FullRailPanel>[] = [
       { id: "shelf", label: "Shelf" },
-      { id: "hold", label: "Hold" },
+      { id: "hold", label: "Cargo" },
       { id: "reserve", label: "Reserve" },
     ];
     const activeItems =
@@ -2155,9 +2183,11 @@ function App() {
       : isVisitorMode || fullWorkspaceTab === "trade"
         ? tradeBlockedReason ?? compactTradeCopy
         : isOwnerMode || fullWorkspaceTab === "owner"
-          ? hasPendingPolicyChanges || hasPendingNetworkChanges
-            ? "Draft changes are pending publication."
-            : "Published rules match the current draft."
+          ? !runtime
+            ? runtimeUnavailableReason
+            : hasPendingPolicyChanges || hasPendingNetworkChanges
+              ? "Draft changes are pending publication."
+              : "Published rules match the current draft."
           : isFullMode && fullWorkspaceTab === "proof"
             ? "Proof and discovery tools stay isolated from the normal interaction surfaces."
             : currentViewDefinition[viewMode].description;
@@ -2179,7 +2209,7 @@ function App() {
           {isFullMode && fullWorkspaceTab === "owner" && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (
             <button
               className="secondary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
               onClick={() => void handleSharedNetworkPolicySave()}
             >
               Save network
@@ -2188,7 +2218,7 @@ function App() {
           {showOwnerActions ? (
             <button
               className="primary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
               onClick={() => void handlePolicySave()}
             >
               Save policy
@@ -2197,7 +2227,7 @@ function App() {
           {showOwnerActions ? (
             <button
               className="secondary-action"
-              disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
               onClick={() => void handleFreeze()}
             >
               Freeze ruleset
