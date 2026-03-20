@@ -24,6 +24,7 @@
     "locker:set-visitor-rival": "node --import tsx scripts/trust-locker/set-visitor-tribe.ts",
     "locker:inspect": "node --import tsx scripts/trust-locker/inspect-locker.ts",
     "locker:signals": "node --import tsx scripts/trust-locker/recent-signals.ts",
+    "locker:print-utopia-handoff": "node --import tsx scripts/trust-locker/print-utopia-handoff.ts",
     "locker:trade-fair": "node --import tsx scripts/trust-locker/trade-fair.ts",
     "locker:trade-dishonest": "node --import tsx scripts/trust-locker/trade-dishonest.ts",
     "demo:reset": "node --import tsx scripts/trust-locker/demo-operator.ts reset",

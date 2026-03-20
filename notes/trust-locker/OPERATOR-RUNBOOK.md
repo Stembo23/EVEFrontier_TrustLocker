@@ -2,6 +2,11 @@
 
 This is the authoritative local/demo sequence for Barter Box. Use it as the source of truth for reset, prepare, and verify.
 
+For controlled Utopia handoff after localnet proof, use:
+
+- [`CONTROLLED-UTOPIA-HANDOFF.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/CONTROLLED-UTOPIA-HANDOFF.md)
+- [`LAUNCH-ROADMAP.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/LAUNCH-ROADMAP.md)
+
 ## Preconditions
 
 - Source the workspace toolchain: [`notes/setup/codex-env.zsh`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/setup/codex-env.zsh)
@@ -125,5 +130,6 @@ From [`apps/utopia-smart-assembly`](/Users/anthony/Documents/EVE%20Frontier%20Sm
 2. `pnpm deploy:cloudflare:preview`
 3. Validate the preview URL in a normal browser.
 4. `pnpm deploy:cloudflare:prod`
+5. `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff`
 
 If you need the optional Vercel fallback flow, follow [`PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md).

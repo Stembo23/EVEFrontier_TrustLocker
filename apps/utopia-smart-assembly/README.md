@@ -102,6 +102,7 @@ The hosted app is a static Vite SPA. GitHub + Cloudflare Pages is the primary de
 - `pnpm build` compiles the app and is the source of truth for hosted output.
 - `pnpm deploy:cloudflare:preview` builds and deploys a preview to Cloudflare Pages.
 - `pnpm deploy:cloudflare:prod` builds and deploys production to Cloudflare Pages.
+- `pnpm locker:print-utopia-handoff` prints the exact hosted `owner` / `visitor` / `full` URLs for a controlled Utopia `itemId`.
 - `pnpm vercel-build` mirrors `pnpm build` for Vercel’s build hook.
 - `pnpm deploy:vercel:preview` remains optional and performs a prebuilt preview deploy through the Vercel CLI.
 - `pnpm deploy:vercel:prod` remains optional and performs a prebuilt production deploy through the Vercel CLI.
