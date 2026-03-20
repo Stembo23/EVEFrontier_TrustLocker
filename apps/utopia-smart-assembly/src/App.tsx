@@ -1232,8 +1232,8 @@ function App() {
       description: "Set what the box accepts in exchange, review the shelf, tune the market rules, and publish without using the debug surface.",
     },
     full: {
-      label: "Full",
-      eyebrow: "Full view",
+      label: "Admin",
+      eyebrow: "Admin view",
       title: "Follow the box from identity to trade to governance.",
       description: "This walkthrough keeps the complete submission, audit, and operator context in one ordered page.",
     },
