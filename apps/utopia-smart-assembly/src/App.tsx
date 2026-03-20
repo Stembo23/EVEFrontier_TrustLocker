@@ -1773,11 +1773,11 @@ function App() {
         <section className="callout">
           <p className="section-label">Inventory flow</p>
           <p className="section-copy">
-            Shelf stock is what visitors can take. Your cargo here is your personal inventory slot inside this box. Procurement receipts become claimable by owner until you claim them or restock them.
+            Shelf stock is what visitors can take. Items you are offering for trade come from your personal inventory slot inside this box. Procurement receipts become claimable by owner until you claim them or restock them.
           </p>
         </section>
         {renderInventoryActionRows({
-          title: "Your cargo here",
+          title: "Items you are offering for trade",
           subtitle: "Use this inventory slot as the source when you stock the shelf.",
           items: resolvedSnapshot.ownerCargoInventory,
           emptyState: "No owner cargo is currently loaded into this box.",
@@ -2407,7 +2407,7 @@ function App() {
         return (
           <aside className={`shell-panel left-rail ${isProcurementMode ? "owner-rail" : "owner-rail-single"}`}>
             {renderRailSection({
-              title: "Your cargo here",
+              title: "Items you are offering for trade",
               subtitle: "Owner-held inventory inside this box, available for stocking.",
               items: resolvedSnapshot.ownerCargoInventory,
               quantityLabel: "hold",

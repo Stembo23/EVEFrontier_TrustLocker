@@ -72,7 +72,7 @@
 - The owner browser flow now distinguishes four live inventory states:
   - `Offered on shelf`
   - `Accepted in exchange`
-  - `Your cargo here`
+  - `Items you are offering for trade`
   - `Claimable by owner`
 - Shared strike persistence in the Move package and browser app:
   - owner-defined `strike_scope_id`

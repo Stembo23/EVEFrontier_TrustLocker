@@ -92,7 +92,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - `Claim receipts` or `Restock from claimable` when procurement state exists
   - visitor trade after the owner inventory actions
 - Owner inventory validation now assumes the in-panel `Inventory` tab flow:
-  - `Your cargo here`
+  - `Items you are offering for trade`
   - `Offered on shelf`
   - `Claimable by owner` in procurement mode
 
@@ -138,7 +138,7 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm `perpetual_market` hides `Claimable by owner`.
 - [ ] Confirm `procurement_market` shows `Claimable by owner`.
 - [ ] Confirm `Inventory` is present in `view=owner`.
-- [ ] Confirm `Stock shelf` succeeds from `Your cargo here`.
+- [ ] Confirm `Stock shelf` succeeds from `Items you are offering for trade`.
 - [ ] Confirm `Claim receipts` or `Restock from claimable` succeeds in procurement mode.
 - [ ] Confirm owner-ready is not claimed until those inventory actions are validated live.
 
