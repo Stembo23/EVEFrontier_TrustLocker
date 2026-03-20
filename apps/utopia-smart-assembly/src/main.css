@@ -254,7 +254,7 @@ button {
 
 .shell-layout.view-visitor,
 .shell-layout.view-owner {
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .left-rail,
@@ -393,8 +393,41 @@ button {
 }
 
 .checkbox-field input {
-  width: auto;
-  min-height: auto;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.72);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.checkbox-field input::after {
+  content: "";
+  width: 6px;
+  height: 12px;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  transform: rotate(45deg) scale(0.85);
+}
+
+.checkbox-field input:checked {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.checkbox-field input:checked::after {
+  border-right-color: #fff;
+  border-bottom-color: #fff;
+}
+
+.checkbox-field input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
 }
 
 .metrics-grid {
@@ -621,7 +654,7 @@ button {
 
   .shell-layout.view-visitor,
   .shell-layout.view-owner {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .metrics-grid {
