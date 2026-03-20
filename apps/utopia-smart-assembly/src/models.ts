@@ -59,6 +59,8 @@ export type VisitorState = {
   localCooldownEndTimestampMs?: number | null;
 };
 
+export type LockerInventoryItem = CatalogItem & { quantity: number };
+
 export type LockerSnapshot = {
   lockerName: string;
   lockerId: string;
@@ -67,9 +69,10 @@ export type LockerSnapshot = {
   owner: OwnerState;
   visitor: VisitorState;
   sharedPenalty: SharedPenaltyState;
-  openInventory: Array<CatalogItem & { quantity: number }>;
-  ownerReserveInventory: Array<CatalogItem & { quantity: number }>;
-  visitorInventory: Array<CatalogItem & { quantity: number }>;
+  openInventory: LockerInventoryItem[];
+  ownerReserveInventory: LockerInventoryItem[];
+  ownerCargoInventory: LockerInventoryItem[];
+  visitorInventory: LockerInventoryItem[];
   policy: LockerPolicyDraft;
   recentSignals: LockerRecentSignal[];
 };

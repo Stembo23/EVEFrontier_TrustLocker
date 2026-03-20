@@ -326,6 +326,7 @@ function buildBaseSnapshot(args: {
     },
     openInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     ownerReserveInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
+    ownerCargoInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     visitorInventory: policyItems.map((item) => ({ ...item, quantity: 0 })),
     fuelFeeSupported: false,
     policy: {
@@ -579,6 +580,7 @@ export async function resolveRuntimeSnapshot(args: {
     frozenBytes,
     openStorageKeyBytes,
     storageOwnerCapBytes,
+    ownerCharacterOwnerCapBytes,
     recentSignals,
   ] = await Promise.all([
     readPolicyField(client, runtime.extensionConfigId),
@@ -600,6 +602,14 @@ export async function resolveRuntimeSnapshot(args: {
       `${runtime.worldPackageId}::storage_unit::owner_cap_id`,
       (tx) => [tx.object(runtime.lockerId)],
     ),
+    runtime.ownerCharacterId
+      ? devInspectBytes(
+          client,
+          walletSender,
+          `${runtime.worldPackageId}::character::owner_cap_id`,
+          (tx) => [tx.object(runtime.ownerCharacterId)],
+        )
+      : Promise.resolve(null),
     loadRecentSignals(client, runtime.trustLockerPackageId),
   ]);
 
@@ -647,11 +657,17 @@ export async function resolveRuntimeSnapshot(args: {
 
   const openStorageKey = openStorageKeyBytes ? bcs.Address.parse(openStorageKeyBytes) : null;
   const storageOwnerCapId = storageOwnerCapBytes ? bcs.Address.parse(storageOwnerCapBytes) : null;
+  const ownerCharacterOwnerCapId = ownerCharacterOwnerCapBytes
+    ? bcs.Address.parse(ownerCharacterOwnerCapBytes)
+    : null;
   const visitorOwnerCapId = visitorOwnerCapBytes ? bcs.Address.parse(visitorOwnerCapBytes) : null;
 
-  const [openInventoryEntries, ownerReserveEntries, visitorInventoryEntries] = await Promise.all([
+  const [openInventoryEntries, ownerReserveEntries, ownerCargoEntries, visitorInventoryEntries] = await Promise.all([
     openStorageKey ? loadInventoryEntries(client, runtime.lockerId, openStorageKey) : Promise.resolve([]),
     storageOwnerCapId ? loadInventoryEntries(client, runtime.lockerId, storageOwnerCapId) : Promise.resolve([]),
+    ownerCharacterOwnerCapId
+      ? loadInventoryEntries(client, runtime.lockerId, ownerCharacterOwnerCapId)
+      : Promise.resolve([]),
     visitorOwnerCapId ? loadInventoryEntries(client, runtime.lockerId, visitorOwnerCapId) : Promise.resolve([]),
   ]);
 
@@ -774,6 +790,7 @@ export async function resolveRuntimeSnapshot(args: {
     },
     openInventory: materializeInventory(openInventoryEntries, policyDraft),
     ownerReserveInventory: materializeInventory(ownerReserveEntries, policyDraft),
+    ownerCargoInventory: materializeInventory(ownerCargoEntries, policyDraft),
     visitorInventory: materializeInventory(visitorInventoryEntries, policyDraft),
     policy: {
       ...policyDraft,
@@ -800,6 +817,9 @@ export async function resolveRuntimeSnapshot(args: {
   }
   if (snapshot.policy.marketMode === "procurement") {
     notes.push("Procurement mode routes visitor-offered goods into the owner's reserve inventory inside the same unit.");
+  }
+  if (snapshot.ownerCargoInventory.length === 0) {
+    notes.push("Owner cargo inventory inside this unit is currently empty or unavailable.");
   }
 
   return { snapshot, notes, runtime };
@@ -951,6 +971,24 @@ async function resolveVisitorOwnerCapRef(
   return loadObjectRef(client, bcs.Address.parse(bytes));
 }
 
+async function resolveCharacterOwnerCapRef(
+  client: SuiJsonRpcClient,
+  runtime: LockerRuntimeContext,
+  senderAddress: string,
+  characterId: string,
+) {
+  const bytes = await devInspectBytes(
+    client,
+    senderAddress,
+    `${runtime.worldPackageId}::character::owner_cap_id`,
+    (tx) => [tx.object(characterId)],
+  );
+  if (!bytes) {
+    throw new Error(`Could not resolve Character owner cap for ${characterId}.`);
+  }
+  return loadObjectRef(client, bcs.Address.parse(bytes));
+}
+
 function buildPolicyVectors(draft: LockerPolicyDraft) {
   const acceptedItems = draft.acceptedItems
     .filter((item) => item.points > 0)
@@ -1089,6 +1127,173 @@ export async function freezeLockerPolicy(args: {
   tx.moveCall({
     target: `${args.runtime.trustLockerPackageId}::trust_locker::freeze_locker`,
     arguments: [tx.object(args.runtime.lockerId), storageOwnerCap],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, receipt],
+  });
+
+  const result = await args.signAndExecuteTransaction({
+    transaction: tx,
+    options: buildExecutionOptions(),
+  });
+  return extractTransactionDigest(result);
+}
+
+export async function stockShelf(args: {
+  runtime: LockerRuntimeContext;
+  senderAddress: string;
+  typeId: number;
+  quantity: number;
+  signAndExecuteTransaction: WalletTxExecutor;
+}): Promise<string> {
+  if (args.quantity <= 0) {
+    throw new Error("Stock quantity must be greater than zero.");
+  }
+
+  const client = createRuntimeClient(args.runtime);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
+  const storageOwnerCapRef = await resolveStorageUnitOwnerCapRef(
+    client,
+    args.runtime,
+    args.senderAddress,
+  );
+  const ownerCharacterCapRef = await resolveCharacterOwnerCapRef(
+    client,
+    args.runtime,
+    args.senderAddress,
+    ownerCharacterId,
+  );
+
+  const tx = new Transaction();
+  const [storageOwnerCap, storageReceipt] = tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(storageOwnerCapRef)],
+  });
+  const [ownerCharacterCap, receipt] = tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::character::Character`],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(ownerCharacterCapRef)],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.trustLockerPackageId}::trust_locker::stock_from_owned_inventory`,
+    arguments: [
+      tx.object(args.runtime.lockerId),
+      tx.object(ownerCharacterId),
+      storageOwnerCap,
+      ownerCharacterCap,
+      tx.pure.u64(BigInt(args.typeId)),
+      tx.pure.u32(args.quantity),
+    ],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::character::Character`],
+    arguments: [tx.object(ownerCharacterId), ownerCharacterCap, receipt],
+  });
+  tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, storageReceipt],
+  });
+
+  const result = await args.signAndExecuteTransaction({
+    transaction: tx,
+    options: buildExecutionOptions(),
+  });
+  return extractTransactionDigest(result);
+}
+
+export async function claimReceipts(args: {
+  runtime: LockerRuntimeContext;
+  senderAddress: string;
+  typeId: number;
+  quantity: number;
+  signAndExecuteTransaction: WalletTxExecutor;
+}): Promise<string> {
+  if (args.quantity <= 0) {
+    throw new Error("Claim quantity must be greater than zero.");
+  }
+
+  const client = createRuntimeClient(args.runtime);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
+  const storageOwnerCapRef = await resolveStorageUnitOwnerCapRef(
+    client,
+    args.runtime,
+    args.senderAddress,
+  );
+
+  const tx = new Transaction();
+  const [storageOwnerCap, receipt] = tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(storageOwnerCapRef)],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.trustLockerPackageId}::trust_locker::claim_to_owned_inventory`,
+    arguments: [
+      tx.object(args.runtime.lockerId),
+      tx.object(ownerCharacterId),
+      storageOwnerCap,
+      tx.pure.u64(BigInt(args.typeId)),
+      tx.pure.u32(args.quantity),
+    ],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::return_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), storageOwnerCap, receipt],
+  });
+
+  const result = await args.signAndExecuteTransaction({
+    transaction: tx,
+    options: buildExecutionOptions(),
+  });
+  return extractTransactionDigest(result);
+}
+
+export async function restockFromClaimable(args: {
+  runtime: LockerRuntimeContext;
+  senderAddress: string;
+  typeId: number;
+  quantity: number;
+  signAndExecuteTransaction: WalletTxExecutor;
+}): Promise<string> {
+  if (args.quantity <= 0) {
+    throw new Error("Restock quantity must be greater than zero.");
+  }
+
+  const client = createRuntimeClient(args.runtime);
+  const ownerCharacterId = args.runtime.ownerCharacterId;
+  const storageOwnerCapRef = await resolveStorageUnitOwnerCapRef(
+    client,
+    args.runtime,
+    args.senderAddress,
+  );
+
+  const tx = new Transaction();
+  const [storageOwnerCap, receipt] = tx.moveCall({
+    target: `${args.runtime.worldPackageId}::character::borrow_owner_cap`,
+    typeArguments: [`${args.runtime.worldPackageId}::storage_unit::StorageUnit`],
+    arguments: [tx.object(ownerCharacterId), tx.receivingRef(storageOwnerCapRef)],
+  });
+
+  tx.moveCall({
+    target: `${args.runtime.trustLockerPackageId}::trust_locker::seed_open_inventory`,
+    arguments: [
+      tx.object(args.runtime.lockerId),
+      tx.object(ownerCharacterId),
+      storageOwnerCap,
+      tx.pure.u64(BigInt(args.typeId)),
+      tx.pure.u32(args.quantity),
+    ],
   });
 
   tx.moveCall({

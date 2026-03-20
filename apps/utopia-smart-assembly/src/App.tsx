@@ -15,9 +15,12 @@ import {
   type MarketMode,
 } from "../trust-locker.config";
 import {
+  claimReceipts,
   createLocalDemoSignerExecutor,
   executeTrade,
   freezeLockerPolicy,
+  restockFromClaimable,
+  stockShelf,
   updateStrikeNetworkPolicy,
   updateLockerPolicy,
   type WalletTxExecutor,
@@ -82,7 +85,7 @@ type SharedNetworkPolicyForm = {
 };
 
 type ActionState = {
-  status: "idle" | "pending" | "success" | "error";
+  status: "idle" | "blocked" | "pending" | "success" | "error";
   label: string;
   message?: string;
   digest?: string;
@@ -96,9 +99,10 @@ type ViewDefinition = {
 };
 
 type VisitorWorkspaceTab = "trade" | "terms" | "status";
-type OwnerWorkspaceTab = "goods" | "terms" | "network" | "publish";
+type OwnerWorkspaceTab = "goods" | "inventory" | "terms" | "network" | "publish";
 type FullWorkspaceTab = "overview" | "trade" | "owner" | "signals" | "proof";
 type FullRailPanel = "shelf" | "hold" | "reserve";
+type InventoryActionKind = "stock" | "claim" | "restock";
 
 type WorkspaceTabDefinition<T extends string> = {
   id: T;
@@ -113,6 +117,7 @@ const VISITOR_WORKSPACE_TABS: WorkspaceTabDefinition<VisitorWorkspaceTab>[] = [
 
 const OWNER_WORKSPACE_TABS: WorkspaceTabDefinition<OwnerWorkspaceTab>[] = [
   { id: "goods", label: "Goods" },
+  { id: "inventory", label: "Inventory" },
   { id: "terms", label: "Market settings" },
   { id: "network", label: "Trust network" },
   { id: "publish", label: "Publish" },
@@ -455,6 +460,7 @@ function App() {
   const [requestedQuantity, setRequestedQuantity] = useState<number>(1);
   const [offeredTypeId, setOfferedTypeId] = useState<number>(0);
   const [offeredQuantity, setOfferedQuantity] = useState<number>(1);
+  const [inventoryActionQuantities, setInventoryActionQuantities] = useState<Record<string, number>>({});
   const [localDemoSignerDraft, setLocalDemoSignerDraft] = useState<LocalDemoSignerDraft>(
     readStoredLocalDemoSignerDraft,
   );
@@ -582,6 +588,7 @@ function App() {
     setOfferedTypeId(initialOfferedTypeId);
     setRequestedQuantity(1);
     setOfferedQuantity(snapshot.visitorInventory[0] ? 1 : 0);
+    setInventoryActionQuantities({});
   }, [snapshot]);
 
   useEffect(() => {
@@ -693,6 +700,30 @@ function App() {
     }
   }
 
+  function setBlockedAction(label: string, message: string) {
+    setActionState({
+      status: "blocked",
+      label,
+      message,
+    });
+  }
+
+  function inventoryActionKey(kind: InventoryActionKind, typeId: number) {
+    return `${kind}:${typeId}`;
+  }
+
+  function readInventoryActionQuantity(kind: InventoryActionKind, typeId: number): number {
+    return inventoryActionQuantities[inventoryActionKey(kind, typeId)] ?? 1;
+  }
+
+  function updateInventoryActionQuantity(kind: InventoryActionKind, typeId: number, value: string) {
+    const parsed = Math.max(0, Number(value) || 0);
+    setInventoryActionQuantities((current) => ({
+      ...current,
+      [inventoryActionKey(kind, typeId)]: parsed,
+    }));
+  }
+
   function persistLocalDemoSignerDraft() {
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(
@@ -797,23 +828,21 @@ function App() {
   async function handlePolicySave() {
     const actor = resolveActorExecution("owner");
     if (!runtime || !runtime.ownerCharacterId || !ownerPolicyForm || !actor) {
-      setActionState({
-        status: "error",
-        label: "Save policy",
-        message: showLocalDemoSignerPanel
+      setBlockedAction(
+        "Save policy",
+        showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
           : "Connect the owner wallet and load the live Barter Box runtime before saving policy.",
-      });
+      );
       return;
     }
 
     const draft = buildDraftFromForm(ownerPolicyForm);
     if (draft.fuelFeeUnits > 0) {
-      setActionState({
-        status: "error",
-        label: "Save policy",
-        message: "Fuel fees are still deferred. Set the trade fee to 0 until a real Fuel debit path is proven.",
-      });
+      setBlockedAction(
+        "Save policy",
+        "Fuel fees are still deferred. Set the trade fee to 0 until a real Fuel debit path is proven.",
+      );
       return;
     }
     await runWalletAction(
@@ -834,13 +863,12 @@ function App() {
   async function handleFreeze() {
     const actor = resolveActorExecution("owner");
     if (!runtime || !runtime.ownerCharacterId || !actor) {
-      setActionState({
-        status: "error",
-        label: "Freeze locker",
-        message: showLocalDemoSignerPanel
+      setBlockedAction(
+        "Freeze locker",
+        showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
           : "Connect the owner wallet and load the live Barter Box runtime before freezing.",
-      });
+      );
       return;
     }
 
@@ -865,13 +893,12 @@ function App() {
   async function handleSharedNetworkPolicySave() {
     const actor = resolveActorExecution("owner");
     if (!runtime || !runtime.ownerCharacterId || !sharedNetworkPolicyForm || !actor) {
-      setActionState({
-        status: "error",
-        label: "Save strike network",
-        message: showLocalDemoSignerPanel
+      setBlockedAction(
+        "Save strike network",
+        showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
           : "Connect the owner wallet and load the live Barter Box runtime before saving trust-network settings.",
-      });
+      );
       return;
     }
 
@@ -909,22 +936,20 @@ function App() {
   async function handleTrade() {
     const actor = resolveActorExecution("visitor");
     if (sameItemSelected) {
-      setActionState({
-        status: "error",
-        label: "Execute trade",
-        message: "Choose two different goods before trading. Same-item trades are disabled in v1.",
-      });
+      setBlockedAction(
+        "Execute trade",
+        "Choose two different goods before trading. Same-item trades are disabled in v1.",
+      );
       return;
     }
 
     if (!runtime || !runtime.visitorCharacterId || !actor || !requestedItem || !offeredItem) {
-      setActionState({
-        status: "error",
-        label: "Execute trade",
-        message: showLocalDemoSignerPanel
+      setBlockedAction(
+        "Execute trade",
+        showLocalDemoSignerPanel
           ? "Load localnet runtime data and configure the local visitor demo signer, or connect a visitor-capable wallet."
           : "Connect a wallet with a live character and load the live Barter Box runtime before trading.",
-      });
+      );
       return;
     }
 
@@ -942,6 +967,142 @@ function App() {
         }),
       actor.mode === "local-demo-signer"
         ? "Signing locally in the browser with the configured visitor demo key..."
+        : "Awaiting wallet confirmation...",
+    );
+  }
+
+  async function handleStockShelf(typeId: number) {
+    const actor = resolveActorExecution("owner");
+    const quantity = readInventoryActionQuantity("stock", typeId);
+    const item = resolvedSnapshot.ownerCargoInventory.find((entry) => entry.typeId === typeId);
+    if (!runtime || !runtime.ownerCharacterId || !actor) {
+      setBlockedAction(
+        "Stock shelf",
+        showLocalDemoSignerPanel
+          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
+          : "Connect the owner wallet and load a live Barter Box before stocking shelf items.",
+      );
+      return;
+    }
+    if (!item) {
+      setBlockedAction("Stock shelf", "This item is not currently available in your cargo for this box.");
+      return;
+    }
+    if (quantity <= 0) {
+      setBlockedAction("Stock shelf", "Stock quantity must be greater than zero.");
+      return;
+    }
+    if (quantity > item.quantity) {
+      setBlockedAction("Stock shelf", "Stock quantity exceeds the cargo available in this box.");
+      return;
+    }
+
+    await runWalletAction(
+      actor.mode === "local-demo-signer" ? "Stock shelf (local demo signer)" : "Stock shelf",
+      () =>
+        stockShelf({
+          runtime,
+          senderAddress: actor.senderAddress,
+          typeId,
+          quantity,
+          signAndExecuteTransaction: actor.executor,
+        }),
+      actor.mode === "local-demo-signer"
+        ? "Signing locally in the browser with the configured owner demo key..."
+        : "Awaiting wallet confirmation...",
+    );
+  }
+
+  async function handleClaimReceipts(typeId: number) {
+    const actor = resolveActorExecution("owner");
+    const quantity = readInventoryActionQuantity("claim", typeId);
+    const item = resolvedSnapshot.ownerReserveInventory.find((entry) => entry.typeId === typeId);
+    if (!isProcurementMode) {
+      setBlockedAction("Claim receipts", "Claiming only applies in procurement mode.");
+      return;
+    }
+    if (!runtime || !runtime.ownerCharacterId || !actor) {
+      setBlockedAction(
+        "Claim receipts",
+        showLocalDemoSignerPanel
+          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
+          : "Connect the owner wallet and load a live Barter Box before claiming receipts.",
+      );
+      return;
+    }
+    if (!item) {
+      setBlockedAction("Claim receipts", "No claimable receipts are available for this item.");
+      return;
+    }
+    if (quantity <= 0) {
+      setBlockedAction("Claim receipts", "Claim quantity must be greater than zero.");
+      return;
+    }
+    if (quantity > item.quantity) {
+      setBlockedAction("Claim receipts", "Claim quantity exceeds the receipts currently available.");
+      return;
+    }
+
+    await runWalletAction(
+      actor.mode === "local-demo-signer" ? "Claim receipts (local demo signer)" : "Claim receipts",
+      () =>
+        claimReceipts({
+          runtime,
+          senderAddress: actor.senderAddress,
+          typeId,
+          quantity,
+          signAndExecuteTransaction: actor.executor,
+        }),
+      actor.mode === "local-demo-signer"
+        ? "Signing locally in the browser with the configured owner demo key..."
+        : "Awaiting wallet confirmation...",
+    );
+  }
+
+  async function handleRestockFromClaimable(typeId: number) {
+    const actor = resolveActorExecution("owner");
+    const quantity = readInventoryActionQuantity("restock", typeId);
+    const item = resolvedSnapshot.ownerReserveInventory.find((entry) => entry.typeId === typeId);
+    if (!isProcurementMode) {
+      setBlockedAction("Restock from claimable", "Restocking from claimable receipts only applies in procurement mode.");
+      return;
+    }
+    if (!runtime || !runtime.ownerCharacterId || !actor) {
+      setBlockedAction(
+        "Restock from claimable",
+        showLocalDemoSignerPanel
+          ? "Load localnet runtime data and configure the local owner demo signer, or connect an owner-capable wallet."
+          : "Connect the owner wallet and load a live Barter Box before restocking receipts.",
+      );
+      return;
+    }
+    if (!item) {
+      setBlockedAction("Restock from claimable", "No claimable receipts are available for this item.");
+      return;
+    }
+    if (quantity <= 0) {
+      setBlockedAction("Restock from claimable", "Restock quantity must be greater than zero.");
+      return;
+    }
+    if (quantity > item.quantity) {
+      setBlockedAction("Restock from claimable", "Restock quantity exceeds the receipts currently available.");
+      return;
+    }
+
+    await runWalletAction(
+      actor.mode === "local-demo-signer"
+        ? "Restock from claimable (local demo signer)"
+        : "Restock from claimable",
+      () =>
+        restockFromClaimable({
+          runtime,
+          senderAddress: actor.senderAddress,
+          typeId,
+          quantity,
+          signAndExecuteTransaction: actor.executor,
+        }),
+      actor.mode === "local-demo-signer"
+        ? "Signing locally in the browser with the configured owner demo key..."
         : "Awaiting wallet confirmation...",
     );
   }
@@ -1427,7 +1588,7 @@ function App() {
           <div className="workspace-card-header">
             <p className="section-label">Offered on shelf</p>
             <p className="section-copy">
-              This is what visitors can currently take. The owner chooses it by stocking the storage unit itself, outside this panel.
+              This is what visitors can currently take. Shelf stock is real inventory, not policy. Use the Inventory tab to load more goods into the box.
             </p>
           </div>
           <div className="accepted-goods-list">
@@ -1470,7 +1631,7 @@ function App() {
           <section className="callout">
             <p className="section-label">Perpetual circulation</p>
             <p className="section-copy">
-              In perpetual mode, visitor payments return to the public shelf. Nothing accumulates separately for the owner.
+              In perpetual mode, visitor payments return to the public shelf. Claimable receipts only appear in procurement mode.
             </p>
           </section>
         )}
@@ -1532,19 +1693,150 @@ function App() {
             })}
           </div>
         </section>
-        <section className="callout warning">
-          <p className="section-label">Launch blocker: stock and claim flow</p>
-          <p className="section-copy">
-            Stock shelf and claim receipts are not yet wired into this panel. For now they still rely on the storage-unit inventory flow. Hosted Utopia owner-ready stays open until wallet-backed stock and claim actions are implemented or proven impossible by the platform.
-          </p>
-        </section>
         <div className="metrics-grid">
           {renderMetricTile("Shelf lines", resolvedSnapshot.openInventory.length)}
           {resolvedSnapshot.policy.marketMode === "procurement"
             ? renderMetricTile("Claimable by owner", resolvedSnapshot.ownerReserveInventory.length)
             : renderMetricTile("Shelf returns", "public circulation")}
+          {renderMetricTile("Cargo lines", resolvedSnapshot.ownerCargoInventory.length)}
           {renderMetricTile("Risk posture", buildRiskLabel(ownerDraft), "accent")}
         </div>
+      </div>
+    );
+  }
+
+  function renderInventoryActionRows(props: {
+    title: string;
+    subtitle: string;
+    items: LockerDataEnvelope["snapshot"]["openInventory"];
+    emptyState: string;
+    quantityLabel: string;
+    actions: Array<{
+      kind: InventoryActionKind;
+      label: string;
+      onClick: (typeId: number) => Promise<void>;
+    }>;
+  }) {
+    return (
+      <section className="workspace-card">
+        <div className="workspace-card-header">
+          <p className="section-label">{props.title}</p>
+          <p className="section-copy">{props.subtitle}</p>
+        </div>
+        <div className="inventory-mutation-list">
+          {props.items.length === 0 ? (
+            <p className="empty-state">{props.emptyState}</p>
+          ) : (
+            props.items.map((item) => (
+              <div key={item.typeId} className="inventory-mutation-row">
+                <div className="inventory-mutation-copy">
+                  <strong>{item.label}</strong>
+                  <span>{props.quantityLabel} qty {item.quantity}</span>
+                  <span>{item.points} pts | {formatVolume(item.volumeM3, item.quantity)}</span>
+                </div>
+                <div className="inventory-mutation-controls">
+                  {props.actions.map((action) => (
+                    <label key={action.kind} className="inventory-action-control">
+                      <span>{action.label}</span>
+                      <div className="inventory-action-inline">
+                        <input
+                          type="number"
+                          min={0}
+                          value={readInventoryActionQuantity(action.kind, item.typeId)}
+                          onChange={(event) =>
+                            updateInventoryActionQuantity(action.kind, item.typeId, event.target.value)
+                          }
+                        />
+                        <button
+                          type="button"
+                          className={action.kind === "claim" ? "secondary-action" : "primary-action"}
+                          disabled={actionState.status === "pending"}
+                          onClick={() => void action.onClick(item.typeId)}
+                        >
+                          {action.label}
+                        </button>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderOwnerInventoryWorkspace() {
+    return (
+      <div className="workspace-stack">
+        <section className="callout">
+          <p className="section-label">Inventory flow</p>
+          <p className="section-copy">
+            Shelf stock is what visitors can take. Your cargo here is your personal inventory slot inside this box. Procurement receipts become claimable by owner until you claim them or restock them.
+          </p>
+        </section>
+        {renderInventoryActionRows({
+          title: "Your cargo here",
+          subtitle: "Use this inventory slot as the source when you stock the shelf.",
+          items: resolvedSnapshot.ownerCargoInventory,
+          emptyState: "No owner cargo is currently loaded into this box.",
+          quantityLabel: "cargo",
+          actions: [
+            {
+              kind: "stock",
+              label: "Stock",
+              onClick: handleStockShelf,
+            },
+          ],
+        })}
+        {resolvedSnapshot.policy.marketMode === "procurement"
+          ? renderInventoryActionRows({
+              title: "Claimable by owner",
+              subtitle: "Procurement receipts accumulate here until you claim them or restock them onto the shelf.",
+              items: resolvedSnapshot.ownerReserveInventory,
+              emptyState: "No claimable receipts are available yet.",
+              quantityLabel: "claimable",
+              actions: [
+                {
+                  kind: "claim",
+                  label: "Claim",
+                  onClick: handleClaimReceipts,
+                },
+                {
+                  kind: "restock",
+                  label: "Restock",
+                  onClick: handleRestockFromClaimable,
+                },
+              ],
+            })
+          : (
+            <section className="callout">
+              <p className="section-label">Perpetual circulation</p>
+              <p className="section-copy">
+                Perpetual mode sends visitor payments back onto the public shelf. There are no separate claimable receipts in this mode.
+              </p>
+            </section>
+          )}
+        <section className="workspace-card">
+          <div className="workspace-card-header">
+            <p className="section-label">Offered on shelf</p>
+            <p className="section-copy">This is the current public stock visitors can take right now.</p>
+          </div>
+          <div className="accepted-goods-list">
+            {resolvedSnapshot.openInventory.length === 0 ? (
+              <p className="empty-state">No shelf stock is available yet.</p>
+            ) : (
+              resolvedSnapshot.openInventory.map((item) => (
+                <div key={item.typeId} className="accepted-goods-row">
+                  <strong>{item.label}</strong>
+                  <span>qty {item.quantity}</span>
+                  <span>{formatVolume(item.volumeM3, item.quantity)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
     );
   }
@@ -2111,6 +2403,27 @@ function App() {
     }
 
     if (isOwnerMode) {
+      if (ownerWorkspaceTab === "inventory") {
+        return (
+          <aside className={`shell-panel left-rail ${isProcurementMode ? "owner-rail" : "owner-rail-single"}`}>
+            {renderRailSection({
+              title: "Your cargo here",
+              subtitle: "Owner-held inventory inside this box, available for stocking.",
+              items: resolvedSnapshot.ownerCargoInventory,
+              quantityLabel: "hold",
+            })}
+            {isProcurementMode
+              ? renderRailSection({
+                  title: "Claimable by owner",
+                  subtitle: "Procurement receipts waiting to be claimed or restocked.",
+                  items: resolvedSnapshot.ownerReserveInventory,
+                  quantityLabel: "reserve",
+                })
+              : null}
+          </aside>
+        );
+      }
+
       return (
         <aside className={`shell-panel left-rail ${isProcurementMode ? "owner-rail" : "owner-rail-single"}`}>
           {renderRailSection({
@@ -2204,6 +2517,8 @@ function App() {
     }
 
     switch (ownerWorkspaceTab) {
+      case "inventory":
+        return renderOwnerInventoryWorkspace();
       case "terms":
         return renderOwnerTermsWorkspace();
       case "network":
@@ -2220,6 +2535,7 @@ function App() {
     return (
       <div className="workspace-stack">
         {renderOwnerGoodsWorkspace()}
+        {renderOwnerInventoryWorkspace()}
         {renderOwnerTermsWorkspace()}
         {renderOwnerNetworkWorkspace()}
         {renderOwnerPublishWorkspace()}
@@ -2264,7 +2580,13 @@ function App() {
       ? actionState.message ?? "Wallet action completed."
       : isVisitorMode || fullWorkspaceTab === "trade"
         ? tradeBlockedReason ?? compactTradeCopy
-        : isOwnerMode || fullWorkspaceTab === "owner"
+        : isOwnerMode && ownerWorkspaceTab === "inventory"
+          ? !runtime
+            ? runtimeUnavailableReason
+            : isProcurementMode
+              ? "Use Inventory to stock shelf goods, claim procurement receipts, or restock them onto the shelf."
+              : "Use Inventory to move goods from your cargo here onto the public shelf."
+          : isOwnerMode || fullWorkspaceTab === "owner"
           ? !runtime
             ? runtimeUnavailableReason
             : hasPendingPolicyChanges || hasPendingNetworkChanges
@@ -2275,7 +2597,8 @@ function App() {
             : currentViewDefinition[viewMode].description;
 
   const showTradeActions = isVisitorMode || (isFullMode && fullWorkspaceTab === "trade");
-  const showOwnerActions = isOwnerMode || (isFullMode && fullWorkspaceTab === "owner");
+  const showOwnerActions =
+    (isOwnerMode && ownerWorkspaceTab === "publish") || (isFullMode && fullWorkspaceTab === "owner");
   const idleStatusLabel = showTradeActions
     ? "Trade status"
     : showOwnerActions
@@ -2296,7 +2619,13 @@ function App() {
           {isFullMode && fullWorkspaceTab === "owner" && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (
             <button
               className="secondary-action"
-              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={
+                actionState.status === "pending" ||
+                !runtime ||
+                !runtime.ownerCharacterId ||
+                resolvedSnapshot.policy.isFrozen ||
+                !ownerActor
+              }
               onClick={() => void handleSharedNetworkPolicySave()}
             >
               Save network
@@ -2305,7 +2634,13 @@ function App() {
           {showOwnerActions ? (
             <button
               className="primary-action"
-              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={
+                actionState.status === "pending" ||
+                !runtime ||
+                !runtime.ownerCharacterId ||
+                resolvedSnapshot.policy.isFrozen ||
+                !ownerActor
+              }
               onClick={() => void handlePolicySave()}
             >
               Save policy
@@ -2314,7 +2649,13 @@ function App() {
           {showOwnerActions ? (
             <button
               className="secondary-action"
-              disabled={!runtime || !runtime.ownerCharacterId || resolvedSnapshot.policy.isFrozen || !ownerActor}
+              disabled={
+                actionState.status === "pending" ||
+                !runtime ||
+                !runtime.ownerCharacterId ||
+                resolvedSnapshot.policy.isFrozen ||
+                !ownerActor
+              }
               onClick={() => void handleFreeze()}
             >
               Freeze ruleset
@@ -2323,7 +2664,7 @@ function App() {
           {showTradeActions ? (
             <button
               className="primary-action"
-              disabled={Boolean(tradeBlockedReason)}
+              disabled={actionState.status === "pending" || Boolean(tradeBlockedReason)}
               onClick={() => void handleTrade()}
             >
               {tradeButtonLabel}

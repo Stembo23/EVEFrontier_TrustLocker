@@ -48,6 +48,10 @@ export function createDemoSnapshot(): LockerSnapshot {
       { ...findDefaultCatalogEntry(446), quantity: 6 },
       { ...findDefaultCatalogEntry(449), quantity: 2 },
     ],
+    ownerCargoInventory: [
+      { ...findDefaultCatalogEntry(88069), quantity: 8 },
+      { ...findDefaultCatalogEntry(1), quantity: 2 },
+    ],
     visitorInventory: [
       { ...findDefaultCatalogEntry(88069), quantity: 12 },
       { ...findDefaultCatalogEntry(446), quantity: 4 },

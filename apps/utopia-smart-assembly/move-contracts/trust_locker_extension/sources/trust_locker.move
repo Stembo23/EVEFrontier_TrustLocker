@@ -574,6 +574,55 @@ public fun seed_open_inventory(
     );
 }
 
+public fun stock_from_owned_inventory(
+    storage_unit: &mut StorageUnit,
+    owner_character: &Character,
+    owner_storage_cap: &OwnerCap<StorageUnit>,
+    owner_character_cap: &OwnerCap<Character>,
+    type_id: u64,
+    quantity: u32,
+    ctx: &mut TxContext,
+) {
+    assert_owner(storage_unit, owner_storage_cap);
+    let item = storage_unit.withdraw_by_owner(
+        owner_character,
+        owner_character_cap,
+        type_id,
+        quantity,
+        ctx,
+    );
+    storage_unit.deposit_to_open_inventory<TrustLockerAuth>(
+        owner_character,
+        item,
+        config::x_auth(),
+        ctx,
+    );
+}
+
+public fun claim_to_owned_inventory(
+    storage_unit: &mut StorageUnit,
+    owner_character: &Character,
+    owner_cap: &OwnerCap<StorageUnit>,
+    type_id: u64,
+    quantity: u32,
+    ctx: &mut TxContext,
+) {
+    assert_owner(storage_unit, owner_cap);
+    let item = storage_unit.withdraw_item<TrustLockerAuth>(
+        owner_character,
+        config::x_auth(),
+        type_id,
+        quantity,
+        ctx,
+    );
+    storage_unit.deposit_to_owned<TrustLockerAuth>(
+        owner_character,
+        item,
+        config::x_auth(),
+        ctx,
+    );
+}
+
 public fun freeze_locker(
     storage_unit: &mut StorageUnit,
     owner_cap: &OwnerCap<StorageUnit>,

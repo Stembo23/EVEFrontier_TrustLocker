@@ -86,7 +86,15 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
   - discovery can hand off directly into live owner/visitor URLs
   - a real `itemId` is being used in the hosted route
 - If writes fail in Utopia, record the exact failure and keep Stage B as read-only plus context validation until fixed.
-- Do not call this stage `browser owner-ready` until owner stock/claim flow is integrated or explicitly blocked by the platform.
+- Do not call this stage `browser owner-ready` until all of the following succeed on hosted Utopia:
+  - owner policy write
+  - `Stock shelf`
+  - `Claim receipts` or `Restock from claimable` when procurement state exists
+  - visitor trade after the owner inventory actions
+- Owner inventory validation now assumes the in-panel `Inventory` tab flow:
+  - `Your cargo here`
+  - `Offered on shelf`
+  - `Claimable by owner` in procurement mode
 
 ### Stage C: Owned Utopia Cutover
 
@@ -129,7 +137,10 @@ If you prefer GitHub-connected Cloudflare Pages instead of CLI deploys, configur
 - [ ] Confirm hosted owner/visitor routes stop showing the generic missing-`itemId` state after discovery handoff.
 - [ ] Confirm `perpetual_market` hides `Claimable by owner`.
 - [ ] Confirm `procurement_market` shows `Claimable by owner`.
-- [ ] Confirm owner stock/claim workflow is either integrated or explicitly documented as a platform blocker before calling the hosted app owner-ready.
+- [ ] Confirm `Inventory` is present in `view=owner`.
+- [ ] Confirm `Stock shelf` succeeds from `Your cargo here`.
+- [ ] Confirm `Claim receipts` or `Restock from claimable` succeeds in procurement mode.
+- [ ] Confirm owner-ready is not claimed until those inventory actions are validated live.
 
 ### Utopia Cutover
 

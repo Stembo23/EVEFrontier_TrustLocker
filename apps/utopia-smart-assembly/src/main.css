@@ -303,6 +303,7 @@ button {
 .rail-scroll,
 .workspace-body,
 .catalog-editor,
+.inventory-mutation-list,
 .signal-list,
 .note-list {
   min-height: 0;
@@ -549,11 +550,68 @@ button {
 }
 
 .accepted-goods-list,
+.inventory-mutation-list,
 .signal-list,
 .catalog-editor,
 .note-list {
   display: grid;
   gap: 8px;
+}
+
+.inventory-mutation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--panel-soft);
+}
+
+.inventory-mutation-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.inventory-mutation-copy strong {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inventory-mutation-copy span {
+  color: var(--muted);
+}
+
+.inventory-mutation-controls {
+  display: grid;
+  gap: 8px;
+  min-width: 240px;
+}
+
+.inventory-action-control {
+  display: grid;
+  gap: 6px;
+}
+
+.inventory-action-control > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.inventory-action-inline {
+  display: grid;
+  grid-template-columns: 88px auto;
+  gap: 8px;
+}
+
+.inventory-action-inline input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.72);
+  padding: 9px 10px;
+  border-radius: 0;
 }
 
 .accepted-goods-row {
@@ -665,6 +723,10 @@ button {
   color: var(--accent-strong);
 }
 
+.action-status.blocked {
+  color: var(--danger);
+}
+
 .action-status.error {
   color: var(--danger);
 }
@@ -768,7 +830,8 @@ button {
 
   .accepted-goods-row,
   .asset-row,
-  .catalog-row {
+  .catalog-row,
+  .inventory-mutation-row {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: flex-start;
@@ -776,5 +839,12 @@ button {
 
   .asset-row-meta {
     justify-items: start;
+  }
+
+  .inventory-mutation-controls,
+  .inventory-action-inline {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 1fr;
   }
 }

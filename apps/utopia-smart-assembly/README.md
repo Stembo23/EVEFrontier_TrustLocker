@@ -42,7 +42,7 @@ This workspace contains the project-owned code for the Barter Box Smart Assembly
 - Treat owner stock/claim workflow as launch-critical:
   - `perpetual_market` should only expose shelf circulation
   - `procurement_market` should expose `Claimable by owner`
-  - hosted Utopia owner testing is not complete until stock/claim flow is integrated or explicitly blocked by the platform
+  - hosted Utopia owner testing is not complete until stock/claim flow is integrated and validated live, or explicitly blocked by the platform
 - Run a dual audit gate before calling Phase 2 complete
 - Treat the final owner and visitor UI passes as a work in progress, not a finished visual pass
 
@@ -119,6 +119,10 @@ Barter Box turns a Storage Unit into a programmable social market:
 - the browser dApp now resolves live localnet policy, inventory, and signal data
 - the browser dApp now has a dedicated hosted-Utopia runtime path and no longer silently falls back to localnet assumptions when `tenant=utopia`
 - owner policy mutation/freeze and visitor trade execution are implemented in-browser
+- owner inventory movement is implemented in-browser for the same storage unit:
+  - `Stock shelf` from the owner's owned inventory slot inside the box
+  - `Claim receipts` from procurement receipts into that same owner-held inventory slot
+  - `Restock from claimable` back onto the public shelf
 - localnet browser writes now use a gated unsafe local-only demo signer for repeatable proof
 - the browser dApp now includes a Utopia object-discovery panel that can list owned objects and also query public Utopia storage units, gates, and network nodes for sample `item_id` values
 - the discovery panel now acts as a handoff surface into live hosted testing through direct `Open in Visitor` / `Open in Owner` actions
@@ -128,6 +132,10 @@ Barter Box turns a Storage Unit into a programmable social market:
   - `Owner` mode for guided setup/control
   - `Visitor` mode for player-facing assembly interaction
 - the visitor mode is intentionally transaction-first and omits owner governance by default; owner controls live in `view=owner`
+- the owner mode now separates:
+  - `Goods` for market definition
+  - `Inventory` for shelf/claim movement
+  - `Market settings`, `Trust network`, and `Publish` for governance
 - the final owner and visitor UI polish is still in progress
 - the owner-incentive story is documented first, implemented later; do not narrate Fuel fees as live without the missing debit/credit proof
 - the same hosted app will serve standalone browser and in-game browser contexts via the shared `tenant` + `itemId` + `view` URL contract

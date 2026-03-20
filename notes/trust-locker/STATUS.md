@@ -37,6 +37,11 @@
   - `procurement_market` must show `Claimable by owner`
   - discovery must hand off directly into live `view=visitor` / `view=owner` URLs
   - hosted Utopia is only `owner-ready` after stock/claim workflow is integrated or explicitly blocked by the platform
+- Owner inventory integration is now active:
+  - `view=owner` includes a dedicated `Inventory` tab
+  - owners can stock shelf goods from their owned inventory slot inside the same storage unit
+  - procurement receipts can be claimed into that same owner-held inventory slot or restocked onto the shelf
+  - hosted Utopia still needs live validation before the app can be called `browser owner-ready`
 
 ## Implemented
 
@@ -60,6 +65,15 @@
   - cooldown / network penalty state
   - trade execution
 - Owner governance remains in `view=owner` rather than the default visitor surface
+- Owner inventory movement is now wired into the browser dApp:
+  - `Stock shelf`
+  - `Claim receipts`
+  - `Restock from claimable`
+- The owner browser flow now distinguishes four live inventory states:
+  - `Offered on shelf`
+  - `Accepted in exchange`
+  - `Your cargo here`
+  - `Claimable by owner`
 - Shared strike persistence in the Move package and browser app:
   - owner-defined `strike_scope_id`
   - opt-in `use_shared_penalties`
@@ -158,8 +172,9 @@
 - Owned Utopia storage-unit cutover is still pending user-side control/permissions.
 - Owner stock/claim UX remains a launch blocker:
   - policy is handled in the Barter Box UI
-  - stock/claim still rely on storage-unit inventory flow
-  - owned-Utopia cutover should not be called owner-ready until wallet-backed stock/claim is implemented or a platform limitation is documented
+  - stock/claim/restock are now wired for the same-storage-unit owner inventory path
+  - hosted Utopia still needs live validation for those actions before owner-ready can be claimed
+  - external game-inventory claim beyond the same storage unit remains a separate platform/question, not part of the current validated owner-ready gate
 - Final visitor and owner visual polish is still open and should stay treated as WIP until the next asset pass.
 
 ## Deferred v2

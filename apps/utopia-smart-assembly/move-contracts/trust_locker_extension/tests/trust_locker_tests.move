@@ -457,6 +457,188 @@ fun configure_shared_network_policy(
 }
 
 #[test]
+fun test_owner_can_stock_shelf_from_owned_inventory() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 20);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_ammo<Character>(&mut ts, storage_id, owner_character_id, user_b());
+    authorize_and_configure_locker(&mut ts, storage_id, owner_character_id, config_id);
+
+    let owner_character_cap_id = character_owner_cap_id(&mut ts, owner_character_id);
+    let locker_open_key = {
+        ts::next_tx(&mut ts, admin());
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let key = storage_unit.open_storage_key();
+        ts::return_shared(storage_unit);
+        key
+    };
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, storage_receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        let (owner_cap, receipt) = owner_character.borrow_owner_cap<Character>(
+            ts::most_recent_receiving_ticket<OwnerCap<Character>>(&owner_character_id),
+            ts.ctx(),
+        );
+        trust_locker::stock_from_owned_inventory(
+            &mut storage_unit,
+            &owner_character,
+            &storage_cap,
+            &owner_cap,
+            AMMO_TYPE_ID,
+            3,
+            ts.ctx(),
+        );
+        owner_character.return_owner_cap(owner_cap, receipt);
+        owner_character.return_owner_cap(storage_cap, storage_receipt);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, admin());
+    {
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, owner_character_cap_id, AMMO_TYPE_ID), 7);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, locker_open_key, AMMO_TYPE_ID), 3);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::end(ts);
+}
+
+#[test]
+fun test_owner_can_claim_and_restock_procurement_receipts() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let visitor_character_id = create_character(&mut ts, user_a(), CHARACTER_A_ITEM_ID);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 21);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_lens_to_storage_unit(&mut ts, storage_id, owner_character_id, user_b());
+    mint_ammo<Character>(&mut ts, storage_id, visitor_character_id, user_a());
+    authorize_and_configure_locker_with_relationships(
+        &mut ts,
+        storage_id,
+        owner_character_id,
+        config_id,
+        MARKET_MODE_PROCUREMENT,
+        0,
+        vector[],
+        vector[RIVAL_TRIBE],
+    );
+    seed_locker_open_inventory(&mut ts, storage_id, owner_character_id);
+
+    let owner_character_cap_id = character_owner_cap_id(&mut ts, owner_character_id);
+    let locker_open_key = {
+        ts::next_tx(&mut ts, admin());
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let key = storage_unit.open_storage_key();
+        ts::return_shared(storage_unit);
+        key
+    };
+
+    let trade_clock = clock::create_for_testing(ts.ctx());
+    ts::next_tx(&mut ts, user_a());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut visitor = ts::take_shared_by_id<Character>(&ts, visitor_character_id);
+        let (visitor_cap, visitor_receipt) = visitor.borrow_owner_cap<Character>(
+            ts::most_recent_receiving_ticket<OwnerCap<Character>>(&visitor_character_id),
+            ts.ctx(),
+        );
+        let mut extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::trade(
+            &mut storage_unit,
+            &visitor,
+            &visitor_cap,
+            &mut extension_config,
+            &trade_clock,
+            LENS_TYPE_ID,
+            5,
+            AMMO_TYPE_ID,
+            10,
+            ts.ctx(),
+        );
+        visitor.return_owner_cap(visitor_cap, visitor_receipt);
+        ts::return_shared(extension_config);
+        ts::return_shared(visitor);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        trust_locker::claim_to_owned_inventory(
+            &mut storage_unit,
+            &owner_character,
+            &storage_cap,
+            AMMO_TYPE_ID,
+            4,
+            ts.ctx(),
+        );
+        owner_character.return_owner_cap(storage_cap, receipt);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, admin());
+    {
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, owner_character_cap_id, AMMO_TYPE_ID), 4);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, storage_unit.owner_cap_id(), AMMO_TYPE_ID), 6);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        trust_locker::seed_open_inventory(
+            &mut storage_unit,
+            &owner_character,
+            &storage_cap,
+            AMMO_TYPE_ID,
+            2,
+            ts.ctx(),
+        );
+        owner_character.return_owner_cap(storage_cap, receipt);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::next_tx(&mut ts, admin());
+    {
+        let storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, locker_open_key, AMMO_TYPE_ID), 2);
+        assert_eq!(storage_unit::item_quantity(&storage_unit, storage_unit.owner_cap_id(), AMMO_TYPE_ID), 4);
+        ts::return_shared(storage_unit);
+    };
+
+    trade_clock.destroy_for_testing();
+    ts::end(ts);
+}
+
+#[test]
 fun test_policy_creation_and_update() {
     let mut ts = ts::begin(governor());
     setup_nwn(&mut ts);
