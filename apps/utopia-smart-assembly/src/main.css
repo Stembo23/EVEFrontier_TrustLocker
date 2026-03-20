@@ -502,6 +502,17 @@ button {
   background: rgba(240, 106, 29, 0.12);
 }
 
+.asset-row.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.asset-row.disabled:hover,
+.asset-row.disabled:focus-visible {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--panel-soft);
+}
+
 .asset-row.active .asset-row-meta {
   color: var(--text);
 }

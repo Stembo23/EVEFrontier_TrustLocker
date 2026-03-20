@@ -561,13 +561,18 @@ function App() {
 
   useEffect(() => {
     if (!snapshot) return;
+    const initialRequestedTypeId = snapshot.openInventory[0]?.typeId ?? snapshot.policy.acceptedItems[0]?.typeId ?? 0;
+    const initialOfferedTypeId =
+      snapshot.visitorInventory.find((item) => item.typeId !== initialRequestedTypeId)?.typeId ??
+      snapshot.visitorInventory[0]?.typeId ??
+      snapshot.policy.acceptedItems.find((item) => item.typeId !== initialRequestedTypeId)?.typeId ??
+      snapshot.policy.acceptedItems[0]?.typeId ??
+      0;
     setNowMs(Date.now());
     setOwnerPolicyForm(buildOwnerPolicyForm(snapshot.policy));
     setSharedNetworkPolicyForm(buildSharedNetworkPolicyForm(snapshot));
-    setRequestedTypeId(snapshot.openInventory[0]?.typeId ?? snapshot.policy.acceptedItems[0]?.typeId ?? 0);
-    setOfferedTypeId(
-      snapshot.visitorInventory[0]?.typeId ?? snapshot.policy.acceptedItems[0]?.typeId ?? 0,
-    );
+    setRequestedTypeId(initialRequestedTypeId);
+    setOfferedTypeId(initialOfferedTypeId);
     setRequestedQuantity(1);
     setOfferedQuantity(snapshot.visitorInventory[0] ? 1 : 0);
   }, [snapshot]);
@@ -888,6 +893,15 @@ function App() {
 
   async function handleTrade() {
     const actor = resolveActorExecution("visitor");
+    if (sameItemSelected) {
+      setActionState({
+        status: "error",
+        label: "Execute trade",
+        message: "Choose two different goods before trading. Same-item trades are disabled in v1.",
+      });
+      return;
+    }
+
     if (!runtime || !actor || !requestedItem || !offeredItem) {
       setActionState({
         status: "error",
@@ -969,11 +983,14 @@ function App() {
         ? "Utopia in-game"
         : "Utopia browser";
   const operatorStateLabel = resolvedSnapshot.policy.isActive ? "Online" : "Offline";
-  const compactTradeCopy = resolvedPreview.willStrike
-    ? "Underpaying will add a strike and lock this locker temporarily."
-    : resolvedSnapshot.policy.marketMode === "procurement"
-      ? "Accepted goods route to the owner reserve when the trade clears."
-      : "Published terms are satisfied for this exchange.";
+  const sameItemSelected = requestedItem.typeId === offeredItem.typeId;
+  const compactTradeCopy = sameItemSelected
+    ? "Select two different goods. Same-item trades are disabled in v1."
+    : resolvedPreview.willStrike
+      ? "Underpaying will add a strike and lock this locker temporarily."
+      : resolvedSnapshot.policy.marketMode === "procurement"
+        ? "Accepted goods route to the owner reserve when the trade clears."
+        : "Published terms are satisfied for this exchange.";
   const networkPenaltyCopy =
     resolvedSnapshot.sharedPenalty.pricingPenaltyBps > 0
       ? `Network penalty active: +${(resolvedSnapshot.sharedPenalty.pricingPenaltyBps / 100).toFixed(0)}%`
@@ -990,6 +1007,8 @@ function App() {
     ? `Trading locked while cooldown is active. ${displayedCooldownEndLabel}.`
     : displayedSharedLockoutActive
       ? `Blacklisted by strike network ${resolvedSnapshot.sharedPenalty.policy.scopeId}. ${displayedSharedLockoutLabel}.`
+      : sameItemSelected
+        ? "Choose two different goods. Same-item trades are disabled."
       : resolvedPreview.fuelFeeBlockedReason
         ? resolvedPreview.fuelFeeBlockedReason
       : !runtime
@@ -999,7 +1018,11 @@ function App() {
           : !visitorActor
             ? "Configure the local visitor demo signer or connect a visitor-capable wallet."
             : null;
-  const tradeButtonLabel = displayedCooldownActive ? "Cooldown active" : "Execute trade";
+  const tradeButtonLabel = displayedCooldownActive
+    ? "Cooldown active"
+    : sameItemSelected
+      ? "Choose different goods"
+      : "Execute trade";
   const compactActionStatus = actionState.status !== "idle";
   const inContextStatusLabel =
     actionState.status === "success" ? "Transaction complete" : actionState.label;
@@ -1104,6 +1127,7 @@ function App() {
     items: LockerDataEnvelope["snapshot"]["openInventory"],
     quantityLabel: "shelf" | "hold" | "reserve",
     selectedTypeId?: number,
+    disabledTypeId?: number,
     onSelect?: (typeId: number) => void,
   ) {
     if (items.length === 0) {
@@ -1112,6 +1136,7 @@ function App() {
 
     return items.map((item) => {
       const active = selectedTypeId === item.typeId;
+      const disabled = disabledTypeId === item.typeId;
       const content = (
         <>
           <div className="asset-row-main">
@@ -1139,7 +1164,8 @@ function App() {
         <button
           key={item.typeId}
           type="button"
-          className={active ? "asset-row active" : "asset-row"}
+          className={active ? "asset-row active" : disabled ? "asset-row disabled" : "asset-row"}
+          disabled={disabled}
           onClick={() => onSelect(item.typeId)}
         >
           {content}
@@ -1154,6 +1180,7 @@ function App() {
     items: LockerDataEnvelope["snapshot"]["openInventory"];
     quantityLabel: "shelf" | "hold" | "reserve";
     selectedTypeId?: number;
+    disabledTypeId?: number;
     onSelect?: (typeId: number) => void;
   }) {
     return (
@@ -1163,7 +1190,13 @@ function App() {
           <p className="section-copy">{props.subtitle}</p>
         </div>
         <div className="rail-scroll">
-          {renderAssetRows(props.items, props.quantityLabel, props.selectedTypeId, props.onSelect)}
+          {renderAssetRows(
+            props.items,
+            props.quantityLabel,
+            props.selectedTypeId,
+            props.disabledTypeId,
+            props.onSelect,
+          )}
         </div>
       </section>
     );
@@ -1271,28 +1304,42 @@ function App() {
     );
   }
 
-  function renderTermsWorkspace(compact = false) {
+  function renderTermsWorkspace(options?: { compact?: boolean; advanced?: boolean }) {
+    const compact = options?.compact ?? false;
+    const advanced = options?.advanced ?? false;
     return (
       <div className="workspace-stack">
         <div className="metrics-grid">
           {renderMetricTile("Market mode", marketModeSummary, "accent")}
           {renderMetricTile("Cooldown", `${resolvedSnapshot.policy.cooldownMs / 1000}s`)}
-          {renderMetricTile("Friendly", formatMultiplierValue(resolvedSnapshot.policy.friendlyMultiplierBps))}
-          {renderMetricTile("Rival", formatMultiplierValue(resolvedSnapshot.policy.rivalMultiplierBps))}
-          {renderMetricTile("Friendly IDs", resolvedSnapshot.policy.friendlyTribes.join(", ") || "none")}
-          {renderMetricTile("Rival IDs", resolvedSnapshot.policy.rivalTribes.join(", ") || "none")}
+          {advanced
+            ? renderMetricTile("Friendly", formatMultiplierValue(resolvedSnapshot.policy.friendlyMultiplierBps))
+            : renderMetricTile("Your standing", resolvedSnapshot.visitor.relationshipBucket, "accent")}
+          {advanced
+            ? renderMetricTile("Rival", formatMultiplierValue(resolvedSnapshot.policy.rivalMultiplierBps))
+            : renderMetricTile("Your multiplier", formatMultiplierValue(resolvedPreview.pricingMultiplierBps))}
+          {advanced
+            ? renderMetricTile("Friendly IDs", resolvedSnapshot.policy.friendlyTribes.join(", ") || "none")
+            : renderMetricTile("Tradable goods", resolvedSnapshot.policy.acceptedItems.length)}
+          {advanced
+            ? renderMetricTile("Rival IDs", resolvedSnapshot.policy.rivalTribes.join(", ") || "none")
+            : renderMetricTile("Fuel fee", resolvedSnapshot.policy.fuelFeeUnits || "off")}
           {renderMetricTile(
             "Shared network",
             resolvedSnapshot.policy.useSharedPenalties
               ? `scope ${resolvedSnapshot.policy.strikeScopeId}`
               : "isolated",
           )}
-          {renderMetricTile("Fuel fee", resolvedSnapshot.policy.fuelFeeUnits || "off")}
+          {advanced ? renderMetricTile("Fuel fee", resolvedSnapshot.policy.fuelFeeUnits || "off") : null}
         </div>
         <section className="workspace-card">
           <div className="workspace-card-header">
-            <p className="section-label">Tradable goods</p>
-            <p className="section-copy">These are the goods the box can price and accept during a trade.</p>
+            <p className="section-label">{advanced ? "Tradable goods" : "Goods accepted in exchange"}</p>
+            <p className="section-copy">
+              {advanced
+                ? "These are the goods the box can price and accept during a trade."
+                : "Only these goods can be used as payment. What visitors can take depends on what is stocked on the shelf."}
+            </p>
           </div>
           <div className="accepted-goods-list">
             {resolvedSnapshot.policy.acceptedItems.map((item) => (
@@ -1307,7 +1354,11 @@ function App() {
         <section className="callout">
           <p className="section-label">Mode behavior</p>
           <p className="section-copy">
-            {compact ? marketModeDescription : `${marketModeDescription} ${fuelFeeCopy}.`}
+            {compact
+              ? marketModeDescription
+              : advanced
+                ? `${marketModeDescription} ${fuelFeeCopy}.`
+                : `${marketModeDescription} Only listed goods can be offered in exchange.`}
           </p>
         </section>
       </div>
@@ -1345,7 +1396,7 @@ function App() {
           <div className="workspace-card-header">
             <p className="section-label">Tradable goods</p>
             <p className="section-copy">
-              Enable the goods this box can price and accept. What visitors can take is controlled by what you stock on the shelf.
+              Visitors can take what you stock on the shelf. Enable the goods below to decide what this box will accept in exchange.
             </p>
           </div>
           <div className="catalog-editor">
@@ -1409,70 +1460,77 @@ function App() {
   }
 
   function renderOwnerTermsWorkspace() {
+    const advanced = isFullMode;
     return (
       <div className="workspace-stack">
         <section className="workspace-card">
           <div className="workspace-card-header">
             <p className="section-label">Trade terms</p>
             <p className="section-copy">
-              Use comma-separated tribe IDs. Friendly IDs get the friendly multiplier; rival IDs get the rival multiplier.
+              {advanced
+                ? "Advanced relationship pricing and internal identifiers stay in Full view."
+                : "Set the market behavior and visitor cooldown. Advanced pricing internals stay in Full view."}
             </p>
           </div>
           <div className="field-grid">
-            <label className="field-block">
-              <span>Friendly tribe IDs</span>
-              <input
-                value={resolvedOwnerPolicyForm.friendlyTribesText}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current ? { ...current, friendlyTribesText: event.target.value } : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Rival tribe IDs</span>
-              <input
-                value={resolvedOwnerPolicyForm.rivalTribesText}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current ? { ...current, rivalTribesText: event.target.value } : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Friendly multiplier</span>
-              <input
-                type="number"
-                min={0}
-                step="0.05"
-                value={Number((resolvedOwnerPolicyForm.friendlyMultiplierBps / 10000).toFixed(2))}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current
-                      ? { ...current, friendlyMultiplierBps: parseMultiplierInput(event.target.value) }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Rival multiplier</span>
-              <input
-                type="number"
-                min={0}
-                step="0.05"
-                value={Number((resolvedOwnerPolicyForm.rivalMultiplierBps / 10000).toFixed(2))}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current
-                      ? { ...current, rivalMultiplierBps: parseMultiplierInput(event.target.value) }
-                      : current,
-                  )
-                }
-              />
-            </label>
+            {advanced ? (
+              <>
+                <label className="field-block">
+                  <span>Friendly tribe IDs</span>
+                  <input
+                    value={resolvedOwnerPolicyForm.friendlyTribesText}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current ? { ...current, friendlyTribesText: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Rival tribe IDs</span>
+                  <input
+                    value={resolvedOwnerPolicyForm.rivalTribesText}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current ? { ...current, rivalTribesText: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Friendly multiplier</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.05"
+                    value={Number((resolvedOwnerPolicyForm.friendlyMultiplierBps / 10000).toFixed(2))}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current
+                          ? { ...current, friendlyMultiplierBps: parseMultiplierInput(event.target.value) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Rival multiplier</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.05"
+                    value={Number((resolvedOwnerPolicyForm.rivalMultiplierBps / 10000).toFixed(2))}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current
+                          ? { ...current, rivalMultiplierBps: parseMultiplierInput(event.target.value) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+              </>
+            ) : null}
             <label className="field-block">
               <span>Market mode</span>
               <select
@@ -1493,67 +1551,90 @@ function App() {
               </select>
             </label>
             <label className="field-block">
-              <span>Trade fee (Fuel)</span>
+              <span>{advanced ? "Cooldown (ms)" : "Cooldown (seconds)"}</span>
               <input
                 type="number"
                 min={0}
-                disabled
-                value={resolvedOwnerPolicyForm.fuelFeeUnits}
+                value={advanced ? resolvedOwnerPolicyForm.cooldownMs : resolvedOwnerPolicyForm.cooldownMs / 1000}
                 onChange={(event) =>
                   setOwnerPolicyForm((current) =>
                     current
-                      ? { ...current, fuelFeeUnits: Math.max(0, Number(event.target.value) || 0) }
+                      ? {
+                          ...current,
+                          cooldownMs: Math.max(
+                            0,
+                            Math.round((Number(event.target.value) || 0) * (advanced ? 1 : 1000)),
+                          ),
+                        }
                       : current,
                   )
                 }
               />
             </label>
-            <label className="field-block">
-              <span>Cooldown (ms)</span>
-              <input
-                type="number"
-                min={0}
-                value={resolvedOwnerPolicyForm.cooldownMs}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current
-                      ? { ...current, cooldownMs: Math.max(0, Number(event.target.value) || 0) }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block checkbox-field">
-              <span>Policy active</span>
-              <input
-                type="checkbox"
-                checked={resolvedOwnerPolicyForm.isActive}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current ? { ...current, isActive: event.target.checked } : current,
-                  )
-                }
-              />
-            </label>
+            {advanced ? (
+              <>
+                <label className="field-block">
+                  <span>Trade fee (Fuel)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    disabled
+                    value={resolvedOwnerPolicyForm.fuelFeeUnits}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current
+                          ? { ...current, fuelFeeUnits: Math.max(0, Number(event.target.value) || 0) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block checkbox-field">
+                  <span>Policy active</span>
+                  <input
+                    type="checkbox"
+                    checked={resolvedOwnerPolicyForm.isActive}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current ? { ...current, isActive: event.target.checked } : current,
+                      )
+                    }
+                  />
+                </label>
+              </>
+            ) : null}
           </div>
         </section>
-        <section className="callout">
-          <p className="section-label">Deferred Fuel fee</p>
-          <p className="section-copy">
-            Fuel fees remain disabled until the world contracts prove a real visitor-side Fuel debit path.
-          </p>
-        </section>
+        {advanced ? (
+          <section className="callout">
+            <p className="section-label">Deferred Fuel fee</p>
+            <p className="section-copy">
+              Fuel fees remain disabled until the world contracts prove a real visitor-side Fuel debit path.
+            </p>
+          </section>
+        ) : (
+          <div className="metrics-grid">
+            {renderMetricTile("Mode", marketModeSummary, "accent")}
+            {renderMetricTile("Cooldown", `${resolvedOwnerPolicyForm.cooldownMs / 1000}s`)}
+            {renderMetricTile("Policy", resolvedOwnerPolicyForm.isActive ? "active" : "inactive")}
+          </div>
+        )}
       </div>
     );
   }
 
   function renderOwnerNetworkWorkspace() {
+    const advanced = isFullMode;
     return (
       <div className="workspace-stack">
         <section className="workspace-card">
           <div className="workspace-card-header">
             <p className="section-label">Strike network</p>
-            <p className="section-copy">Shared penalties remain optional and owner-defined.</p>
+            <p className="section-copy">
+              {advanced
+                ? "Shared penalties remain optional and owner-defined."
+                : "Shared penalties are optional. Raw network configuration stays in Full view."}
+            </p>
           </div>
           <div className="field-grid">
             <label className="field-block checkbox-field">
@@ -1568,99 +1649,103 @@ function App() {
                 }
               />
             </label>
-            <label className="field-block">
-              <span>Strike scope ID</span>
-              <input
-                type="number"
-                min={0}
-                value={resolvedOwnerPolicyForm.strikeScopeId}
-                onChange={(event) =>
-                  setOwnerPolicyForm((current) =>
-                    current
-                      ? { ...current, strikeScopeId: Math.max(0, Number(event.target.value) || 0) }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Penalty / strike (bps)</span>
-              <input
-                type="number"
-                min={0}
-                value={resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps}
-                onChange={(event) =>
-                  setSharedNetworkPolicyForm((current) =>
-                    current
-                      ? {
-                          ...current,
-                          pricingPenaltyPerStrikeBps: Math.max(0, Number(event.target.value) || 0),
-                        }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Max penalty (bps)</span>
-              <input
-                type="number"
-                min={0}
-                value={resolvedSharedNetworkPolicyForm.maxPricingPenaltyBps}
-                onChange={(event) =>
-                  setSharedNetworkPolicyForm((current) =>
-                    current
-                      ? { ...current, maxPricingPenaltyBps: Math.max(0, Number(event.target.value) || 0) }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Lockout threshold</span>
-              <input
-                type="number"
-                min={1}
-                value={resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}
-                onChange={(event) =>
-                  setSharedNetworkPolicyForm((current) =>
-                    current
-                      ? { ...current, lockoutStrikeThreshold: Math.max(1, Number(event.target.value) || 1) }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block">
-              <span>Lockout duration (ms)</span>
-              <input
-                type="number"
-                min={0}
-                value={resolvedSharedNetworkPolicyForm.networkLockoutDurationMs}
-                onChange={(event) =>
-                  setSharedNetworkPolicyForm((current) =>
-                    current
-                      ? {
-                          ...current,
-                          networkLockoutDurationMs: Math.max(0, Number(event.target.value) || 0),
-                        }
-                      : current,
-                  )
-                }
-              />
-            </label>
-            <label className="field-block checkbox-field">
-              <span>Shared network active</span>
-              <input
-                type="checkbox"
-                checked={resolvedSharedNetworkPolicyForm.isActive}
-                onChange={(event) =>
-                  setSharedNetworkPolicyForm((current) =>
-                    current ? { ...current, isActive: event.target.checked } : current,
-                  )
-                }
-              />
-            </label>
+            {advanced ? (
+              <>
+                <label className="field-block">
+                  <span>Strike scope ID</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resolvedOwnerPolicyForm.strikeScopeId}
+                    onChange={(event) =>
+                      setOwnerPolicyForm((current) =>
+                        current
+                          ? { ...current, strikeScopeId: Math.max(0, Number(event.target.value) || 0) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Penalty / strike (bps)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resolvedSharedNetworkPolicyForm.pricingPenaltyPerStrikeBps}
+                    onChange={(event) =>
+                      setSharedNetworkPolicyForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              pricingPenaltyPerStrikeBps: Math.max(0, Number(event.target.value) || 0),
+                            }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Max penalty (bps)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resolvedSharedNetworkPolicyForm.maxPricingPenaltyBps}
+                    onChange={(event) =>
+                      setSharedNetworkPolicyForm((current) =>
+                        current
+                          ? { ...current, maxPricingPenaltyBps: Math.max(0, Number(event.target.value) || 0) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Lockout threshold</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={resolvedSharedNetworkPolicyForm.lockoutStrikeThreshold}
+                    onChange={(event) =>
+                      setSharedNetworkPolicyForm((current) =>
+                        current
+                          ? { ...current, lockoutStrikeThreshold: Math.max(1, Number(event.target.value) || 1) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block">
+                  <span>Lockout duration (ms)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resolvedSharedNetworkPolicyForm.networkLockoutDurationMs}
+                    onChange={(event) =>
+                      setSharedNetworkPolicyForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              networkLockoutDurationMs: Math.max(0, Number(event.target.value) || 0),
+                            }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field-block checkbox-field">
+                  <span>Shared network active</span>
+                  <input
+                    type="checkbox"
+                    checked={resolvedSharedNetworkPolicyForm.isActive}
+                    onChange={(event) =>
+                      setSharedNetworkPolicyForm((current) =>
+                        current ? { ...current, isActive: event.target.checked } : current,
+                      )
+                    }
+                  />
+                </label>
+              </>
+            ) : null}
           </div>
         </section>
         <div className="metrics-grid">
@@ -1715,7 +1800,7 @@ function App() {
             {renderMetricTile("Fuel fee", fuelFeeCopy)}
           </div>
         </section>
-        {renderTermsWorkspace(true)}
+        {renderTermsWorkspace({ compact: true, advanced: true })}
       </div>
     );
   }
@@ -1902,6 +1987,7 @@ function App() {
             items: resolvedSnapshot.openInventory,
             quantityLabel: "shelf",
             selectedTypeId: requestedTypeId,
+            disabledTypeId: offeredTypeId,
             onSelect: (typeId) => startTransition(() => setRequestedTypeId(typeId)),
           })}
           {renderRailSection({
@@ -1910,6 +1996,7 @@ function App() {
             items: resolvedSnapshot.visitorInventory,
             quantityLabel: "hold",
             selectedTypeId: offeredTypeId,
+            disabledTypeId: requestedTypeId,
             onSelect: (typeId) => startTransition(() => setOfferedTypeId(typeId)),
           })}
         </aside>
@@ -1970,6 +2057,11 @@ function App() {
             activeQuantityLabel,
             activeSelectedTypeId,
             fullRailPanel === "shelf"
+              ? offeredTypeId
+              : fullRailPanel === "hold"
+                ? requestedTypeId
+                : undefined,
+            fullRailPanel === "shelf"
               ? (typeId) => startTransition(() => setRequestedTypeId(typeId))
               : fullRailPanel === "hold"
                 ? (typeId) => startTransition(() => setOfferedTypeId(typeId))
@@ -1987,7 +2079,7 @@ function App() {
 
     switch (visitorWorkspaceTab) {
       case "terms":
-        return renderTermsWorkspace(false);
+        return renderTermsWorkspace();
       case "status":
         return renderStatusWorkspace();
       case "trade":
@@ -2084,7 +2176,7 @@ function App() {
           {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
         </div>
         <div className="bottom-actions">
-          {showOwnerActions && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (
+          {isFullMode && fullWorkspaceTab === "owner" && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (
             <button
               className="secondary-action"
               disabled={!runtime || resolvedSnapshot.policy.isFrozen || !ownerActor}
