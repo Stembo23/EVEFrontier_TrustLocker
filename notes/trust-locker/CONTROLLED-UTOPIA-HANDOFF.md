@@ -2,6 +2,28 @@
 
 Use this handoff when a teammate has a real Utopia storage unit and needs to finish the live validation path.
 
+## First Command After You Have A Unit
+
+Run this before doing anything else:
+
+```bash
+cd /Users/anthony/Documents/EVE\ Frontier\ Smart\ Assemblies/apps/utopia-smart-assembly
+ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-checklist
+```
+
+This prints:
+
+- the exact `Admin`, `Owner`, and `Visitor` URLs
+- the package and config IDs currently expected by the hosted app
+- the required identity captures for owner and visitor proof
+- the exact proof checklist for browser validation and later `F` cutover
+
+The lower-level URL printer is still available when needed:
+
+```bash
+ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff
+```
+
 ## Identity and Access Rules
 
 These rules are now locked in product and implementation:

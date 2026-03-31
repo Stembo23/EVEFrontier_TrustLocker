@@ -44,6 +44,10 @@ const EStrikeNetworkThresholdInvalid: vector<u8> = b"Strike network lockout thre
 const EMarketModeInvalid: vector<u8> = b"Market mode must be perpetual or procurement";
 #[error(code = 17)]
 const EFuelFeeNotSupported: vector<u8> = b"Fuel fees are not yet supported by the world contracts";
+#[error(code = 18)]
+const ESameItemTradeDisabled: vector<u8> = b"Same-item trades are disabled";
+#[error(code = 19)]
+const EProcurementModeRequired: vector<u8> = b"This action is only available in procurement mode";
 
 const RELATION_FRIENDLY: u8 = 0;
 const RELATION_NEUTRAL: u8 = 1;
@@ -603,11 +607,13 @@ public fun claim_to_owned_inventory(
     storage_unit: &mut StorageUnit,
     owner_character: &Character,
     owner_cap: &OwnerCap<StorageUnit>,
+    extension_config: &ExtensionConfig,
     type_id: u64,
     quantity: u32,
     ctx: &mut TxContext,
 ) {
     assert_owner(storage_unit, owner_cap);
+    assert_procurement_mode(extension_config, object::id(storage_unit));
     let item = storage_unit.withdraw_item<TrustLockerAuth>(
         owner_character,
         config::x_auth(),
@@ -616,6 +622,32 @@ public fun claim_to_owned_inventory(
         ctx,
     );
     storage_unit.deposit_to_owned<TrustLockerAuth>(
+        owner_character,
+        item,
+        config::x_auth(),
+        ctx,
+    );
+}
+
+public fun restock_from_owner_reserve(
+    storage_unit: &mut StorageUnit,
+    owner_character: &Character,
+    owner_cap: &OwnerCap<StorageUnit>,
+    extension_config: &ExtensionConfig,
+    type_id: u64,
+    quantity: u32,
+    ctx: &mut TxContext,
+) {
+    assert_owner(storage_unit, owner_cap);
+    assert_procurement_mode(extension_config, object::id(storage_unit));
+    let item = storage_unit.withdraw_item<TrustLockerAuth>(
+        owner_character,
+        config::x_auth(),
+        type_id,
+        quantity,
+        ctx,
+    );
+    storage_unit.deposit_to_open_inventory<TrustLockerAuth>(
         owner_character,
         item,
         config::x_auth(),
@@ -644,6 +676,7 @@ public fun trade(
     ctx: &mut TxContext,
 ) {
     assert!(requested_quantity > 0, ERequestedQuantityInvalid);
+    assert!(requested_type_id != offered_type_id, ESameItemTradeDisabled);
     let locker_id = object::id(storage_unit);
     let current_timestamp_ms = clock.timestamp_ms();
     let relation;
@@ -867,6 +900,11 @@ fun assert_valid_market_mode(market_mode: u8) {
         market_mode == MARKET_MODE_PERPETUAL || market_mode == MARKET_MODE_PROCUREMENT,
         EMarketModeInvalid,
     );
+}
+
+fun assert_procurement_mode(extension_config: &ExtensionConfig, storage_unit_id: ID) {
+    let policy = borrow_policy(extension_config, storage_unit_id);
+    assert!(policy.market_mode == MARKET_MODE_PROCUREMENT, EProcurementModeRequired);
 }
 
 fun has_shared_penalty_state(

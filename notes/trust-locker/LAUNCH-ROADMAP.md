@@ -37,7 +37,7 @@ Acceptance:
 - the exact unit is confirmed Barter Box-enabled
 - hosted owner and visitor views resolve live state for that same unit
 - the operator can print the exact owner/visitor/admin hosted URLs from:
-  - `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff`
+  - `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-checklist`
 - the owner character ID is known before live proof capture begins
 
 ## Stage 2: Live Demo Inventory Provisioning

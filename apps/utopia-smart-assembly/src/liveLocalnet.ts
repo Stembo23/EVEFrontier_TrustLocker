@@ -1241,6 +1241,7 @@ export async function claimReceipts(args: {
       tx.object(args.runtime.lockerId),
       tx.object(ownerCharacterId),
       storageOwnerCap,
+      tx.object(args.runtime.extensionConfigId),
       tx.pure.u64(BigInt(args.typeId)),
       tx.pure.u32(args.quantity),
     ],
@@ -1286,11 +1287,12 @@ export async function restockFromClaimable(args: {
   });
 
   tx.moveCall({
-    target: `${args.runtime.trustLockerPackageId}::trust_locker::seed_open_inventory`,
+    target: `${args.runtime.trustLockerPackageId}::trust_locker::restock_from_owner_reserve`,
     arguments: [
       tx.object(args.runtime.lockerId),
       tx.object(ownerCharacterId),
       storageOwnerCap,
+      tx.object(args.runtime.extensionConfigId),
       tx.pure.u64(BigInt(args.typeId)),
       tx.pure.u32(args.quantity),
     ],

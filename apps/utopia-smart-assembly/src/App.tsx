@@ -525,6 +525,7 @@ function App() {
     status: "idle",
     label: "No wallet action yet.",
   });
+  const [copiedDigest, setCopiedDigest] = useState<string | null>(null);
 
   const ownerLocalSigner = useMemo(
     () => resolveLocalSigner(localDemoSignerDraft.ownerSecretKey),
@@ -821,6 +822,7 @@ function App() {
     action: () => Promise<string>,
     pendingMessage = "Awaiting wallet confirmation...",
   ) {
+    setCopiedDigest(null);
     setActionState({
       status: "pending",
       label,
@@ -846,11 +848,20 @@ function App() {
   }
 
   function setBlockedAction(label: string, message: string) {
+    setCopiedDigest(null);
     setActionState({
       status: "blocked",
       label,
       message,
     });
+  }
+
+  async function copyDigestToClipboard(digest: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      return;
+    }
+    await navigator.clipboard.writeText(digest);
+    setCopiedDigest(digest);
   }
 
   function inventoryActionKey(kind: InventoryActionKind, typeId: number) {
@@ -1407,7 +1418,7 @@ function App() {
           {compact ? inContextStatusLabel : actionState.label}
         </p>
         <p className="status-copy">{actionState.message ?? "No wallet action has been attempted yet."}</p>
-        {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
+        {actionState.digest ? renderDigestReceipt(actionState.digest) : null}
       </div>
     );
   }
@@ -1426,6 +1437,14 @@ function App() {
               ? "One wallet character was resolved automatically for this unit."
               : "Multiple wallet characters were found. Choose the one that should act on this unit before attempting live writes."}
           </p>
+          {characterSelectionRequired ? (
+            <div className="callout warning">
+              <p className="section-label">Writes blocked</p>
+              <p className="section-copy">
+                Select a character before attempting owner saves, stocking, claims, or visitor trades.
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="character-panel-controls">
           <select
@@ -1448,8 +1467,45 @@ function App() {
             </span>
             <span>Onchain owner: {ownerCharacter ? ownerCharacter.name : compactAddress(identity.assemblyOwnerCharacterId, true)}</span>
           </div>
+          <div className="character-choice-list" aria-label="Resolved characters">
+            {identity.resolvedWalletCharacters.map((candidate) => (
+              <div
+                key={candidate.id}
+                className={
+                  candidate.id === identity.selectedWalletCharacterId
+                    ? "character-choice selected"
+                    : "character-choice"
+                }
+              >
+                <div className="character-choice-copy">
+                  <strong>{candidate.name}</strong>
+                  <small>{compactAddress(candidate.id, true)}</small>
+                </div>
+                <span className={candidate.matchesOwner ? "character-badge owner" : "character-badge"}>
+                  {candidate.matchesOwner ? "Owner" : "Visitor"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+    );
+  }
+
+  function renderDigestReceipt(digest: string) {
+    return (
+      <div className="status-receipt">
+        <span className="receipt-value">Digest: {digest}</span>
+        {typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function" ? (
+          <button
+            type="button"
+            className="receipt-copy"
+            onClick={() => void copyDigestToClipboard(digest)}
+          >
+            {copiedDigest === digest ? "Copied" : "Copy digest"}
+          </button>
+        ) : null}
+      </div>
     );
   }
 
@@ -2828,7 +2884,7 @@ function App() {
             {actionState.status === "idle" ? idleStatusLabel : inContextStatusLabel}
           </p>
           <p className="status-copy">{bottomMessage}</p>
-          {actionState.digest ? <p className="status-copy">Digest: {actionState.digest}</p> : null}
+          {actionState.digest ? renderDigestReceipt(actionState.digest) : null}
         </div>
         <div className="bottom-actions">
           {isFullMode && fullWorkspaceTab === "owner" && resolvedSnapshot.owner.canEditSharedPenaltyPolicy ? (

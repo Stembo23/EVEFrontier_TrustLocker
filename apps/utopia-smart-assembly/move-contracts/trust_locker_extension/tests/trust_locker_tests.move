@@ -11,6 +11,7 @@ use world::{
     access::{OwnerCap, AdminACL},
     character::{Self, Character},
     energy::EnergyConfig,
+    inventory,
     network_node::{Self, NetworkNode},
     object_registry::ObjectRegistry,
     storage_unit::{Self, StorageUnit},
@@ -584,14 +585,17 @@ fun test_owner_can_claim_and_restock_procurement_receipts() {
             ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
             ts.ctx(),
         );
+        let extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
         trust_locker::claim_to_owned_inventory(
             &mut storage_unit,
             &owner_character,
             &storage_cap,
+            &extension_config,
             AMMO_TYPE_ID,
             4,
             ts.ctx(),
         );
+        ts::return_shared(extension_config);
         owner_character.return_owner_cap(storage_cap, receipt);
         ts::return_shared(owner_character);
         ts::return_shared(storage_unit);
@@ -613,14 +617,17 @@ fun test_owner_can_claim_and_restock_procurement_receipts() {
             ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
             ts.ctx(),
         );
-        trust_locker::seed_open_inventory(
+        let extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::restock_from_owner_reserve(
             &mut storage_unit,
             &owner_character,
             &storage_cap,
+            &extension_config,
             AMMO_TYPE_ID,
             2,
             ts.ctx(),
         );
+        ts::return_shared(extension_config);
         owner_character.return_owner_cap(storage_cap, receipt);
         ts::return_shared(owner_character);
         ts::return_shared(storage_unit);
@@ -1624,6 +1631,143 @@ fun test_trade_rejects_unaccepted_offered_type() {
     };
 
     trade_clock.destroy_for_testing();
+    ts::end(ts);
+}
+
+#[test]
+#[expected_failure(abort_code = trust_locker::ESameItemTradeDisabled)]
+fun test_trade_rejects_same_item_on_chain() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let visitor_character_id = create_character(&mut ts, user_a(), CHARACTER_A_ITEM_ID);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 17);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_lens_to_storage_unit(&mut ts, storage_id, owner_character_id, user_b());
+    mint_ammo<Character>(&mut ts, storage_id, visitor_character_id, user_a());
+    authorize_and_configure_locker(&mut ts, storage_id, owner_character_id, config_id);
+    seed_locker_open_inventory(&mut ts, storage_id, owner_character_id);
+
+    let trade_clock = clock::create_for_testing(ts.ctx());
+    ts::next_tx(&mut ts, user_a());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut visitor = ts::take_shared_by_id<Character>(&ts, visitor_character_id);
+        let (visitor_cap, visitor_receipt) = visitor.borrow_owner_cap<Character>(
+            ts::most_recent_receiving_ticket<OwnerCap<Character>>(&visitor_character_id),
+            ts.ctx(),
+        );
+        let mut extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::trade(
+            &mut storage_unit,
+            &visitor,
+            &visitor_cap,
+            &mut extension_config,
+            &trade_clock,
+            LENS_TYPE_ID,
+            1,
+            LENS_TYPE_ID,
+            1,
+            ts.ctx(),
+        );
+        visitor.return_owner_cap(visitor_cap, visitor_receipt);
+        ts::return_shared(extension_config);
+        ts::return_shared(visitor);
+        ts::return_shared(storage_unit);
+    };
+
+    trade_clock.destroy_for_testing();
+    ts::end(ts);
+}
+
+#[test]
+#[expected_failure(abort_code = trust_locker::EProcurementModeRequired)]
+fun test_owner_cannot_claim_receipts_in_perpetual_mode() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 18);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_lens_to_storage_unit(&mut ts, storage_id, owner_character_id, user_b());
+    authorize_and_configure_locker(&mut ts, storage_id, owner_character_id, config_id);
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        let extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::claim_to_owned_inventory(
+            &mut storage_unit,
+            &owner_character,
+            &storage_cap,
+            &extension_config,
+            LENS_TYPE_ID,
+            1,
+            ts.ctx(),
+        );
+        ts::return_shared(extension_config);
+        owner_character.return_owner_cap(storage_cap, receipt);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
+    ts::end(ts);
+}
+
+#[test]
+#[expected_failure(abort_code = inventory::EItemDoesNotExist)]
+fun test_owner_cannot_restock_missing_procurement_receipts() {
+    let mut ts = ts::begin(governor());
+    setup_nwn(&mut ts);
+    let config_id = publish_config(&mut ts);
+    let owner_character_id = create_character(&mut ts, user_b(), CHARACTER_B_ITEM_ID);
+    let (storage_id, nwn_id) = create_storage_unit(&mut ts, owner_character_id, STORAGE_ITEM_ID + 19);
+
+    online_storage_unit(&mut ts, user_b(), owner_character_id, storage_id, nwn_id);
+    mint_lens_to_storage_unit(&mut ts, storage_id, owner_character_id, user_b());
+    authorize_and_configure_locker_with_relationships(
+        &mut ts,
+        storage_id,
+        owner_character_id,
+        config_id,
+        MARKET_MODE_PROCUREMENT,
+        0,
+        vector[],
+        vector[RIVAL_TRIBE],
+    );
+
+    ts::next_tx(&mut ts, user_b());
+    {
+        let mut storage_unit = ts::take_shared_by_id<StorageUnit>(&ts, storage_id);
+        let mut owner_character = ts::take_shared_by_id<Character>(&ts, owner_character_id);
+        let (storage_cap, receipt) = owner_character.borrow_owner_cap<StorageUnit>(
+            ts::receiving_ticket_by_id<OwnerCap<StorageUnit>>(storage_unit.owner_cap_id()),
+            ts.ctx(),
+        );
+        let extension_config = ts::take_shared_by_id<ExtensionConfig>(&ts, config_id);
+        trust_locker::restock_from_owner_reserve(
+            &mut storage_unit,
+            &owner_character,
+            &storage_cap,
+            &extension_config,
+            AMMO_TYPE_ID,
+            1,
+            ts.ctx(),
+        );
+        ts::return_shared(extension_config);
+        owner_character.return_owner_cap(storage_cap, receipt);
+        ts::return_shared(owner_character);
+        ts::return_shared(storage_unit);
+    };
+
     ts::end(ts);
 }
 

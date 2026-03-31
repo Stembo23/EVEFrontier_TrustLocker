@@ -113,11 +113,14 @@ Use this only when you are ready to point a real storage unit at the hosted app.
 3. Confirm the visitor browser opens the hosted app on a controlled assembly.
 4. Confirm the visitor layout hides local demo signer and other proof-only controls.
 5. Obtain a real Utopia storage unit that you own or can edit.
-6. Set that unit’s custom URL to the hosted Barter Box app.
-7. Open the unit in-game with `F`.
-8. Confirm the hosted app loads in the in-game browser with the expected `itemId` and `view=visitor`.
-9. Capture the final hosted URL, unit identity, and screenshot proof.
-10. If you narrate the owner-incentive model, keep the distinction explicit:
+6. Run:
+   - `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-checklist`
+7. Use the printed Owner / Visitor / Admin URLs for browser proof first.
+8. Set that unit’s custom URL to the hosted Barter Box app.
+9. Open the unit in-game with `F`.
+10. Confirm the hosted app loads in the in-game browser with the expected `itemId` and ownership-based default view.
+11. Capture the final hosted URL, unit identity, selected character identity, and screenshot proof.
+12. If you narrate the owner-incentive model, keep the distinction explicit:
    - `perpetual_market` = ongoing circulation/storefront
    - `procurement_market` = owner reserve in the same storage unit
    - Fuel fee = deferred unless proven
@@ -130,6 +133,7 @@ From [`apps/utopia-smart-assembly`](/Users/anthony/Documents/EVE%20Frontier%20Sm
 2. `pnpm deploy:cloudflare:preview`
 3. Validate the preview URL in a normal browser.
 4. `pnpm deploy:cloudflare:prod`
-5. `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff`
+5. `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-checklist`
+6. If you only need raw URLs, `ITEM_ID=<utopia storage unit item id> pnpm locker:print-utopia-handoff`
 
 If you need the optional Vercel fallback flow, follow [`PHASE-2-IN-GAME-DEPLOYMENT.md`](/Users/anthony/Documents/EVE%20Frontier%20Smart%20Assemblies/notes/trust-locker/PHASE-2-IN-GAME-DEPLOYMENT.md).

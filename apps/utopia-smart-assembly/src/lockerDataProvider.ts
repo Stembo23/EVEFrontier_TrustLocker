@@ -49,7 +49,7 @@ function applyAssemblyContext(
   };
 }
 
-function resolveRuntimeEnvironment(args: {
+export function resolveRuntimeEnvironment(args: {
   tenant?: string | null;
   runtimeNetwork?: "localnet" | "utopia";
   isInGameClient?: boolean;
@@ -59,7 +59,7 @@ function resolveRuntimeEnvironment(args: {
   return "utopia-browser";
 }
 
-function deriveCharacterResolutionStatus(args: {
+export function deriveCharacterResolutionStatus(args: {
   selectedWalletCharacterId: string | null;
   resolvedWalletCharacters: WalletCharacterCandidate[];
   isCurrentCharacterOwner: boolean;
@@ -101,7 +101,7 @@ async function resolveWalletCharacters(
   );
 }
 
-function resolveIdentityState(args: {
+export function resolveIdentityState(args: {
   assemblyOwnerCharacterId?: string | null;
   resolvedWalletCharacters: WalletCharacterCandidate[];
   selectedWalletCharacterId?: string | null;
@@ -133,7 +133,7 @@ function resolveIdentityState(args: {
   };
 }
 
-function resolveUiCapabilities(
+export function resolveUiCapabilities(
   runtimeEnvironment: RuntimeEnvironment,
   requestedViewMode: UiMode,
   identity: LockerIdentityState,
